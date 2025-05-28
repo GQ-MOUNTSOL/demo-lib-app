@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { RefreshCw, User, Database, CheckCircle, AlertCircle, Cloud, Plus } from 'lucide-react'
+import { RefreshCw, User, Database, Cloud, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface Author {
@@ -17,19 +17,20 @@ interface Author {
   nationality?: string
   era?: string
   bio?: string
-  source?: 'mongodb' | 'testdb'
+  source?: "mongodb" | "testdb"
+  _id?: string
 }
 
 interface DatabaseStatus {
   mongodb: {
-    status: 'connected' | 'error' | 'unknown'
+    status: "connected" | "error" | "unknown"
     message: string
     author_count: number
     database?: string
     collections?: string[]
   }
   testdb: {
-    status: 'connected' | 'error' | 'unknown'
+    status: "connected" | "error" | "unknown"
     message: string
     author_count: number
   }
@@ -46,8 +47,8 @@ export function AuthorTestDisplay() {
   const [mongoAuthors, setMongoAuthors] = useState<Author[]>([])
   const [testDbAuthors, setTestDbAuthors] = useState<Author[]>([])
   const [dbStatus, setDbStatus] = useState<DatabaseStatus>({
-    mongodb: { status: 'unknown', message: '', author_count: 0 },
-    testdb: { status: 'unknown', message: '', author_count: 0 }
+    mongodb: { status: "unknown", message: "", author_count: 0 },
+    testdb: { status: "unknown", message: "", author_count: 0 },
   })
   const [isLoadingMongo, setIsLoadingMongo] = useState(false)
   const [isLoadingTestDb, setIsLoadingTestDb] = useState(false)
@@ -55,10 +56,10 @@ export function AuthorTestDisplay() {
   const [activeTab, setActiveTab] = useState("mongodb")
   const [showAddForm, setShowAddForm] = useState(false)
   const [newAuthor, setNewAuthor] = useState<NewAuthor>({
-    name: '',
-    nationality: '',
-    era: '',
-    bio: ''
+    name: "",
+    nationality: "",
+    era: "",
+    bio: "",
   })
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
@@ -72,22 +73,29 @@ export function AuthorTestDisplay() {
   const fetchMongoAuthors = async () => {
     setIsLoadingMongo(true)
     try {
-      const response = await fetch('/api/mongodb/authors')
+      const response = await fetch("/api/mongodb/authors")
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.details || data.error || 'Failed to fetch MongoDB authors')
+        throw new Error(data.details || data.error || "Failed to fetch MongoDB authors")
       }
 
       if (data.success) {
-        setMongoAuthors(data.authors || [])
-        setDbStatus(prev => ({
+        // Format authors with source identifier
+        const formattedAuthors = (data.authors || []).map((author) => ({
+          ...author,
+          source: "mongodb",
+          id: author.id || author._id,
+        }))
+
+        setMongoAuthors(formattedAuthors)
+        setDbStatus((prev) => ({
           ...prev,
           mongodb: {
-            status: 'connected',
-            message: 'Successfully connected to MongoDB',
-            author_count: data.count || 0
-          }
+            status: "connected",
+            message: "Successfully connected to MongoDB Atlas",
+            author_count: data.count || 0,
+          },
         }))
 
         toast({
@@ -95,17 +103,17 @@ export function AuthorTestDisplay() {
           description: `Successfully loaded ${data.count || 0} authors from MongoDB`,
         })
       } else {
-        throw new Error(data.error || 'Unknown error')
+        throw new Error(data.error || "Unknown error")
       }
     } catch (error) {
       console.error("Error fetching MongoDB authors:", error)
-      setDbStatus(prev => ({
+      setDbStatus((prev) => ({
         ...prev,
         mongodb: {
-          status: 'error',
+          status: "error",
           message: error.message,
-          author_count: 0
-        }
+          author_count: 0,
+        },
       }))
       toast({
         title: "MongoDB Error",
@@ -120,22 +128,28 @@ export function AuthorTestDisplay() {
   const fetchTestDbAuthors = async () => {
     setIsLoadingTestDb(true)
     try {
-      const response = await fetch('/api/testdb/authors')
+      const response = await fetch("/api/testdb/authors")
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.details || data.error || 'Failed to fetch test database authors')
+        throw new Error(data.details || data.error || "Failed to fetch test database authors")
       }
 
       if (data.success) {
-        setTestDbAuthors(data.authors || [])
-        setDbStatus(prev => ({
+        // Format authors with source identifier
+        const formattedAuthors = (data.authors || []).map((author) => ({
+          ...author,
+          source: "testdb",
+        }))
+
+        setTestDbAuthors(formattedAuthors)
+        setDbStatus((prev) => ({
           ...prev,
           testdb: {
-            status: 'connected',
-            message: data.note || 'Successfully connected to Test Database',
-            author_count: data.count || 0
-          }
+            status: "connected",
+            message: data.note || "Successfully connected to Test Database",
+            author_count: data.count || 0,
+          },
         }))
 
         toast({
@@ -143,17 +157,17 @@ export function AuthorTestDisplay() {
           description: `Successfully loaded ${data.count || 0} authors from Test Database`,
         })
       } else {
-        throw new Error(data.error || 'Unknown error')
+        throw new Error(data.error || "Unknown error")
       }
     } catch (error) {
       console.error("Error fetching Test DB authors:", error)
-      setDbStatus(prev => ({
+      setDbStatus((prev) => ({
         ...prev,
         testdb: {
-          status: 'error',
+          status: "error",
           message: error.message,
-          author_count: 0
-        }
+          author_count: 0,
+        },
       }))
       toast({
         title: "Test DB Error",
@@ -168,19 +182,19 @@ export function AuthorTestDisplay() {
   const testMongoConnection = async () => {
     setIsTestingMongo(true)
     try {
-      const response = await fetch('/api/mongodb/test-connection')
+      const response = await fetch("/api/mongodb/test-connection")
       const data = await response.json()
 
       if (data.success) {
-        setDbStatus(prev => ({
+        setDbStatus((prev) => ({
           ...prev,
           mongodb: {
             ...prev.mongodb,
-            status: 'connected',
+            status: "connected",
             message: data.message,
             database: data.database,
-            collections: data.collections
-          }
+            collections: data.collections,
+          },
         }))
 
         toast({
@@ -188,16 +202,16 @@ export function AuthorTestDisplay() {
           description: `Connected to database: ${data.database}`,
         })
       } else {
-        throw new Error(data.details || data.error || 'Connection test failed')
+        throw new Error(data.details || data.error || "Connection test failed")
       }
     } catch (error) {
-      setDbStatus(prev => ({
+      setDbStatus((prev) => ({
         ...prev,
         mongodb: {
           ...prev.mongodb,
-          status: 'error',
-          message: error.message
-        }
+          status: "error",
+          message: error.message,
+        },
       }))
       toast({
         title: "MongoDB Connection Test Failed",
@@ -221,10 +235,10 @@ export function AuthorTestDisplay() {
 
     setIsCreating(true)
     try {
-      const response = await fetch('/api/mongodb/authors', {
-        method: 'POST',
+      const response = await fetch("/api/mongodb/authors", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(newAuthor),
       })
@@ -232,7 +246,7 @@ export function AuthorTestDisplay() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.details || data.error || 'Failed to create author')
+        throw new Error(data.details || data.error || "Failed to create author")
       }
 
       if (data.success) {
@@ -242,13 +256,13 @@ export function AuthorTestDisplay() {
         })
 
         // Reset form
-        setNewAuthor({ name: '', nationality: '', era: '', bio: '' })
+        setNewAuthor({ name: "", nationality: "", era: "", bio: "" })
         setShowAddForm(false)
 
         // Refresh the authors list
         fetchMongoAuthors()
       } else {
-        throw new Error(data.error || 'Unknown error')
+        throw new Error(data.error || "Unknown error")
       }
     } catch (error) {
       toast({
@@ -283,21 +297,23 @@ export function AuthorTestDisplay() {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {authors.map((author) => (
-          <Card key={`${author.source}-${author.id}`} className="border border-gray-200">
+        {authors.map((author, index) => (
+          <Card key={`${author.source}-${author.id || author._id || index}`} className="border border-gray-200">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  author.source === 'mongodb' ? 'bg-green-100' : 'bg-blue-100'
-                }`}>
-                  {author.source === 'mongodb' ? (
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    author.source === "mongodb" ? "bg-green-100" : "bg-blue-100"
+                  }`}
+                >
+                  {author.source === "mongodb" ? (
                     <Cloud className="h-5 w-5 text-green-600" />
                   ) : (
                     <Database className="h-5 w-5 text-blue-600" />
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm mb-1">{author.name}</h3>
+                  <h3 className="font-semibold text-sm mb-1">{author.name || "Unknown Author"}</h3>
                   {author.nationality && (
                     <p className="text-xs text-gray-600 mb-1">
                       <strong>Nationality:</strong> {author.nationality}
@@ -309,20 +325,27 @@ export function AuthorTestDisplay() {
                     </Badge>
                   )}
                   {author.bio && (
-                    <p className="text-xs text-gray-700 line-clamp-3 mb-2">{author.bio}</p>
+                    <p
+                      className="text-xs text-gray-700 mb-2 overflow-hidden"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                      }}
+                    >
+                      {author.bio}
+                    </p>
                   )}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-wrap">
                     <Badge variant="outline" className="text-xs">
-                      ID: {author.id}
+                      ID: {author.id || author._id || "N/A"}
                     </Badge>
-                    <Badge 
+                    <Badge
                       className={`text-xs ${
-                        author.source === 'mongodb' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-blue-100 text-blue-800'
+                        author.source === "mongodb" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
                       }`}
                     >
-                      {author.source === 'mongodb' ? 'MongoDB' : 'Test DB'}
+                      {author.source === "mongodb" ? "MongoDB" : "Test DB"}
                     </Badge>
                   </div>
                 </div>
@@ -343,7 +366,7 @@ export function AuthorTestDisplay() {
             <Database className="h-5 w-5" />
             Database Connections Status
           </CardTitle>
-          <CardDescription>Direct connection status for MongoDB and Test Database</CardDescription>
+          <CardDescription>Direct connection status for MongoDB Atlas and Test Database</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -352,32 +375,40 @@ export function AuthorTestDisplay() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-sm flex items-center gap-2">
                   <Cloud className="h-4 w-4 text-green-500" />
-                  MongoDB (Direct Connection)
+                  MongoDB Atlas (Direct Connection)
                 </h3>
-                <Badge className={
-                  dbStatus.mongodb.status === 'connected' 
-                    ? "bg-green-100 text-green-800" 
-                    : dbStatus.mongodb.status === 'error'
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-                }>
+                <Badge
+                  className={
+                    dbStatus.mongodb.status === "connected"
+                      ? "bg-green-100 text-green-800"
+                      : dbStatus.mongodb.status === "error"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-800"
+                  }
+                >
                   {dbStatus.mongodb.status}
                 </Badge>
               </div>
               <p className="text-xs text-gray-600 mb-2">{dbStatus.mongodb.message}</p>
               <div className="space-y-1 text-xs">
-                <p><strong>Authors:</strong> {dbStatus.mongodb.author_count}</p>
+                <p>
+                  <strong>Authors:</strong> {dbStatus.mongodb.author_count}
+                </p>
                 {dbStatus.mongodb.database && (
-                  <p><strong>Database:</strong> {dbStatus.mongodb.database}</p>
+                  <p>
+                    <strong>Database:</strong> {dbStatus.mongodb.database}
+                  </p>
                 )}
                 {dbStatus.mongodb.collections && (
-                  <p><strong>Collections:</strong> {dbStatus.mongodb.collections.join(', ')}</p>
+                  <p>
+                    <strong>Collections:</strong> {dbStatus.mongodb.collections.join(", ")}
+                  </p>
                 )}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2 w-full" 
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
                 onClick={testMongoConnection}
                 disabled={isTestingMongo}
               >
@@ -393,22 +424,24 @@ export function AuthorTestDisplay() {
                   <Database className="h-4 w-4 text-blue-500" />
                   Test Database (Mock Data)
                 </h3>
-                <Badge className={
-                  dbStatus.testdb.status === 'connected' 
-                    ? "bg-green-100 text-green-800" 
-                    : dbStatus.testdb.status === 'error'
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-                }>
-                  {dbStatus.testdb.status}
+                <Badge
+                  className={
+                    dbStatus.testdb.status === "connected"
+                      ? "bg-green-100 text-green-800"
+                      : dbStatus.testdb.status === "error"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-gray-100 text-gray-800"
+                  }
+                >
+                  {dbStatus.testdb.status === "error" ? "Mock Data" : dbStatus.testdb.status}
                 </Badge>
               </div>
               <p className="text-xs text-gray-600 mb-2">{dbStatus.testdb.message}</p>
               <p className="text-sm font-medium">Authors: {dbStatus.testdb.author_count}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2 w-full" 
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 w-full"
                 onClick={fetchTestDbAuthors}
                 disabled={isLoadingTestDb}
               >
@@ -426,9 +459,7 @@ export function AuthorTestDisplay() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Authors from Multiple Sources</CardTitle>
-              <CardDescription>
-                View and manage authors from MongoDB and your Test Database
-              </CardDescription>
+              <CardDescription>View and manage authors from MongoDB Atlas and your Test Database</CardDescription>
             </div>
             <Button onClick={() => setShowAddForm(!showAddForm)} variant="outline">
               <Plus className="h-4 w-4 mr-2" />
@@ -450,7 +481,7 @@ export function AuthorTestDisplay() {
                     <Input
                       id="name"
                       value={newAuthor.name}
-                      onChange={(e) => setNewAuthor(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => setNewAuthor((prev) => ({ ...prev, name: e.target.value }))}
                       placeholder="Author name"
                     />
                   </div>
@@ -459,7 +490,7 @@ export function AuthorTestDisplay() {
                     <Input
                       id="nationality"
                       value={newAuthor.nationality}
-                      onChange={(e) => setNewAuthor(prev => ({ ...prev, nationality: e.target.value }))}
+                      onChange={(e) => setNewAuthor((prev) => ({ ...prev, nationality: e.target.value }))}
                       placeholder="e.g., American, British"
                     />
                   </div>
@@ -469,7 +500,7 @@ export function AuthorTestDisplay() {
                   <Input
                     id="era"
                     value={newAuthor.era}
-                    onChange={(e) => setNewAuthor(prev => ({ ...prev, era: e.target.value }))}
+                    onChange={(e) => setNewAuthor((prev) => ({ ...prev, era: e.target.value }))}
                     placeholder="e.g., Modern, 20th Century"
                   />
                 </div>
@@ -478,7 +509,7 @@ export function AuthorTestDisplay() {
                   <Textarea
                     id="bio"
                     value={newAuthor.bio}
-                    onChange={(e) => setNewAuthor(prev => ({ ...prev, bio: e.target.value }))}
+                    onChange={(e) => setNewAuthor((prev) => ({ ...prev, bio: e.target.value }))}
                     placeholder="Brief biography of the author"
                     rows={3}
                   />
@@ -491,7 +522,7 @@ export function AuthorTestDisplay() {
                         Creating...
                       </>
                     ) : (
-                      'Create Author'
+                      "Create Author"
                     )}
                   </Button>
                   <Button variant="outline" onClick={() => setShowAddForm(false)}>
@@ -568,21 +599,53 @@ export function AuthorTestDisplay() {
         <CardContent>
           <div className="space-y-4">
             <div className="p-4 bg-green-50 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2 text-green-800">MongoDB Configuration:</h4>
+              <h4 className="font-semibold text-sm mb-2 text-green-800">MongoDB Atlas Configuration:</h4>
               <div className="text-xs text-green-700 space-y-1">
-                <div>• <strong>Database:</strong> bookstore</div>
-                <div>• <strong>Collection:</strong> authors</div>
-                <div>• <strong>Connection:</strong> Direct MongoDB Atlas connection</div>
-                <div>• <strong>Features:</strong> Read, Write, Test Connection</div>
+                <div>
+                  • <strong>Connection:</strong> Direct MongoDB Atlas connection (secure)
+                </div>
+                <div>
+                  • <strong>Database:</strong> bookstore
+                </div>
+                <div>
+                  • <strong>Collection:</strong> authors
+                </div>
+                <div>
+                  • <strong>Features:</strong> Read, Write, Test Connection
+                </div>
+                <div>
+                  • <strong>Security:</strong> Server-side only, credentials protected
+                </div>
               </div>
             </div>
 
             <div className="p-4 bg-blue-50 rounded-lg">
               <h4 className="font-semibold text-sm mb-2 text-blue-800">Test Database Configuration:</h4>
               <div className="text-xs text-blue-700 space-y-1">
-                <div>• <strong>Status:</strong> Mock data (replace with your actual database)</div>
-                <div>• <strong>Location:</strong> /api/testdb/authors</div>
-                <div>• <strong>Note:</strong> Update the API route with your actual database connection</div>
+                <div>
+                  • <strong>Status:</strong> Mock data (replace with your actual database)
+                </div>
+                <div>
+                  • <strong>Location:</strong> /api/testdb/authors
+                </div>
+                <div>
+                  • <strong>Note:</strong> Update the API route with your actual database connection
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-yellow-50 rounded-lg">
+              <h4 className="font-semibold text-sm mb-2 text-yellow-800">Security Improvements:</h4>
+              <div className="text-xs text-yellow-700 space-y-1">
+                <div>
+                  • <strong>Removed Make.com dependency:</strong> No more insecure HTTP connections
+                </div>
+                <div>
+                  • <strong>Direct MongoDB connection:</strong> Secure server-side API routes
+                </div>
+                <div>
+                  • <strong>Protected credentials:</strong> MongoDB credentials stored server-side only
+                </div>
               </div>
             </div>
           </div>
