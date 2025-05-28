@@ -13,6 +13,11 @@ import { useToast } from "@/hooks/use-toast"
 
 interface Author {
   id: string | number
+  name: string
+  nationality?: string
+  era?: string
+  bio?: string
+  source?: 'mongodb' | 'testdb'
 }
 
 interface DatabaseStatus {
@@ -60,6 +65,8 @@ export function AuthorTestDisplay() {
 
   useEffect(() => {
     fetchMongoAuthors()
+    fetchTestDbAuthors()
+    testMongoConnection()
   }, [])
 
   const fetchMongoAuthors = async () => {
@@ -110,7 +117,97 @@ export function AuthorTestDisplay() {
     }
   }
 
-  
+  const fetchTestDbAuthors = async () => {
+    setIsLoadingTestDb(true)
+    try {
+      const response = await fetch('/api/testdb/authors')
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.details || data.error || 'Failed to fetch test database authors')
+      }
+
+      if (data.success) {
+        setTestDbAuthors(data.authors || [])
+        setDbStatus(prev => ({
+          ...prev,
+          testdb: {
+            status: 'connected',
+            message: data.note || 'Successfully connected to Test Database',
+            author_count: data.count || 0
+          }
+        }))
+
+        toast({
+          title: "Test DB Authors Loaded",
+          description: `Successfully loaded ${data.count || 0} authors from Test Database`,
+        })
+      } else {
+        throw new Error(data.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error("Error fetching Test DB authors:", error)
+      setDbStatus(prev => ({
+        ...prev,
+        testdb: {
+          status: 'error',
+          message: error.message,
+          author_count: 0
+        }
+      }))
+      toast({
+        title: "Test DB Error",
+        description: "Failed to fetch authors from Test Database",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingTestDb(false)
+    }
+  }
+
+  const testMongoConnection = async () => {
+    setIsTestingMongo(true)
+    try {
+      const response = await fetch('/api/mongodb/test-connection')
+      const data = await response.json()
+
+      if (data.success) {
+        setDbStatus(prev => ({
+          ...prev,
+          mongodb: {
+            ...prev.mongodb,
+            status: 'connected',
+            message: data.message,
+            database: data.database,
+            collections: data.collections
+          }
+        }))
+
+        toast({
+          title: "MongoDB Connection Test Successful",
+          description: `Connected to database: ${data.database}`,
+        })
+      } else {
+        throw new Error(data.details || data.error || 'Connection test failed')
+      }
+    } catch (error) {
+      setDbStatus(prev => ({
+        ...prev,
+        mongodb: {
+          ...prev.mongodb,
+          status: 'error',
+          message: error.message
+        }
+      }))
+      toast({
+        title: "MongoDB Connection Test Failed",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsTestingMongo(false)
+    }
+  }
 
   const createAuthor = async () => {
     if (!newAuthor.name.trim()) {
@@ -186,11 +283,51 @@ export function AuthorTestDisplay() {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {authors.map((author,index) => (
-          <Card key={index} className="border border-gray-200">
-           <p>{author?._id}</p>
-           <p>{author?.id}</p>
-
+        {authors.map((author) => (
+          <Card key={`${author.source}-${author.id}`} className="border border-gray-200">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  author.source === 'mongodb' ? 'bg-green-100' : 'bg-blue-100'
+                }`}>
+                  {author.source === 'mongodb' ? (
+                    <Cloud className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Database className="h-5 w-5 text-blue-600" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-sm mb-1">{author.name}</h3>
+                  {author.nationality && (
+                    <p className="text-xs text-gray-600 mb-1">
+                      <strong>Nationality:</strong> {author.nationality}
+                    </p>
+                  )}
+                  {author.era && (
+                    <Badge variant="secondary" className="text-xs mb-2">
+                      {author.era}
+                    </Badge>
+                  )}
+                  {author.bio && (
+                    <p className="text-xs text-gray-700 line-clamp-3 mb-2">{author.bio}</p>
+                  )}
+                  <div className="flex gap-1">
+                    <Badge variant="outline" className="text-xs">
+                      ID: {author.id}
+                    </Badge>
+                    <Badge 
+                      className={`text-xs ${
+                        author.source === 'mongodb' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
+                      {author.source === 'mongodb' ? 'MongoDB' : 'Test DB'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
         ))}
       </div>
@@ -237,10 +374,48 @@ export function AuthorTestDisplay() {
                   <p><strong>Collections:</strong> {dbStatus.mongodb.collections.join(', ')}</p>
                 )}
               </div>
-          
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 w-full" 
+                onClick={testMongoConnection}
+                disabled={isTestingMongo}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isTestingMongo ? "animate-spin" : ""}`} />
+                Test MongoDB Connection
+              </Button>
             </div>
 
-         
+            {/* Test DB Status */}
+            <div className="p-4 border rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Database className="h-4 w-4 text-blue-500" />
+                  Test Database (Mock Data)
+                </h3>
+                <Badge className={
+                  dbStatus.testdb.status === 'connected' 
+                    ? "bg-green-100 text-green-800" 
+                    : dbStatus.testdb.status === 'error'
+                    ? "bg-red-100 text-red-800"
+                    : "bg-gray-100 text-gray-800"
+                }>
+                  {dbStatus.testdb.status}
+                </Badge>
+              </div>
+              <p className="text-xs text-gray-600 mb-2">{dbStatus.testdb.message}</p>
+              <p className="text-sm font-medium">Authors: {dbStatus.testdb.author_count}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2 w-full" 
+                onClick={fetchTestDbAuthors}
+                disabled={isLoadingTestDb}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingTestDb ? "animate-spin" : ""}`} />
+                Refresh Test DB
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
