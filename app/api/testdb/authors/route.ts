@@ -3,20 +3,16 @@ import { NextResponse } from "next/server"
 // Mock test database API - replace with your actual test database connection
 export async function GET() {
   try {
-    // Use server-side environment variables
-    const TEST_DB_API = process.env.TEST_DB_API
-    const TEST_DB_TOKEN = process.env.TEST_DB_TOKEN
-
     // Replace this with your actual test database connection
     // For example, if you're using PostgreSQL:
     /*
     const { Pool } = require('pg')
     const pool = new Pool({
-      user: process.env.DB_USER,
-      host: process.env.DB_HOST,
-      database: process.env.DB_NAME,
-      password: process.env.DB_PASSWORD,
-      port: process.env.DB_PORT || 5432,
+      user: 'your_username',
+      host: 'your_host',
+      database: 'your_database',
+      password: 'your_password',
+      port: 5432,
     })
     
     const result = await pool.query('SELECT * FROM authors')
@@ -38,15 +34,16 @@ export async function GET() {
         nationality: "American",
         era: "Modern",
         bio: "A test author from the PostgreSQL test database",
-        source: "testdb",
+        source: "testdb"
       },
       {
         id: 2,
         name: "Test Author 2",
+    
         nationality: "British",
-        era: "Contemporary",
+           era: "Contemporary",
         bio: "Another test author for demonstration purposes",
-        source: "testdb",
+        source: "testdb"
       },
       {
         id: 3,
@@ -54,25 +51,26 @@ export async function GET() {
         nationality: "Canadian",
         era: "21st Century",
         bio: "Third test author with sample biographical information",
-        source: "testdb",
-      },
+        source: "testdb"
+      }
     ]
 
     return NextResponse.json({
       success: true,
       count: mockAuthors.length,
       authors: mockAuthors,
-      note: "This is mock data. Replace with your actual test database connection using server-side environment variables.",
+      note: "This is mock data. Replace with your actual test database connection."
     })
+
   } catch (error) {
     console.error("Error fetching from test database:", error)
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch authors from test database",
-        details: error.message,
+        details: error.message
       },
-      { status: 500 },
+      { status: 500 }
     )
   }
 }
