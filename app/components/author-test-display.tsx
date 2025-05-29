@@ -347,7 +347,7 @@ export function AuthorTestDisplay() {
                         WebkitBoxOrient: "vertical",
                       }}
                     >
-                      {author.}
+                      {author.data}
                     </p>
                   )}
                   <div className="flex gap-1 flex-wrap">
