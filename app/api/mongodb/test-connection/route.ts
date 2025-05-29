@@ -19,11 +19,11 @@ export async function GET() {
 
     // Get collection stats
     const collections = await db.listCollections().toArray()
-    const authorsCollection = collections.find((col) => col.name === "authors")
+    const authorsCollection = collections.find((col) => col.name === "author")
 
     let authorCount = 0
     if (authorsCollection) {
-      authorCount = await db.collection("authors").countDocuments()
+      authorCount = await db.collection("author").countDocuments()
     }
 
     return NextResponse.json({
