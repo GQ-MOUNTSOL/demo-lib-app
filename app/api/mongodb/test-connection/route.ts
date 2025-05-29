@@ -3,7 +3,7 @@ import { MongoClient } from "mongodb"
 
 const MONGODB_URI =
   "mongodb+srv://gqmountsol:JTcgGkZTHJb8qFLq@demo0.pmagwui.mongodb.net/?retryWrites=true&w=majority&appName=demo0"
-const DB_NAME = "bookstore"
+const DB_NAME = "test"
 
 export async function GET() {
   let client: MongoClient | null = null
