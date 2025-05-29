@@ -73,7 +73,7 @@ export function AuthorTestDisplay() {
   const fetchMongoAuthors = async () => {
     setIsLoadingMongo(true)
     try {
-      const response = await fetch("/api/mongodb/author")
+      const response = await fetch("/api/mongodb/authors")
       const data = await response.json()
 
       if (!response.ok) {
