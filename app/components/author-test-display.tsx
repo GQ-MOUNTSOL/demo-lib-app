@@ -86,6 +86,7 @@ export function AuthorTestDisplay() {
           ...author,
           source: "mongodb",
           id: author.id || author._id,
+          data:author.authorD
         }))
 
         setMongoAuthors(formattedAuthors)
@@ -334,6 +335,19 @@ export function AuthorTestDisplay() {
                       }}
                     >
                       {author.bio}
+                    </p>
+                  )}
+
+                  {author.data && (
+                    <p
+                      className="text-xs text-gray-700 mb-2 overflow-hidden"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                      }}
+                    >
+                      {author.}
                     </p>
                   )}
                   <div className="flex gap-1 flex-wrap">
