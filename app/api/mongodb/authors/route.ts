@@ -32,7 +32,7 @@ export async function GET() {
     const authors = await db.collection("authors").find({}).toArray()
 
     // Convert MongoDB _id to string and format the response
-    const formattedAuthors = authors.map((authors) => ({
+    const formattedAuthors = authors.map((author) => ({
       id: author._id.toString(),
       _id: author._id.toString(),
       name: author.name,
