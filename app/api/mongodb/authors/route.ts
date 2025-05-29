@@ -3,7 +3,7 @@ import { MongoClient } from "mongodb"
 
 const MONGODB_URI =
   "mongodb+srv://gqmountsol:JTcgGkZTHJb8qFLq@demo0.pmagwui.mongodb.net/?retryWrites=true&w=majority&appName=demo0"
-const DB_NAME = "test" // Changed from "test" to "bookstore" to match your Flask app
+const DB_NAME = "bookstore" // Changed from "test" to "bookstore" to match your Flask app
 
 let cachedClient: MongoClient | null = null
 
@@ -29,10 +29,10 @@ export async function GET() {
     const db = client.db(DB_NAME)
 
     // Fetch authors from the authors collection
-    const authors = await db.collection("author").find({}).toArray()
+    const authors = await db.collection("authors").find({}).toArray()
 
     // Convert MongoDB _id to string and format the response
-    const formattedAuthors = authors.map((author) => ({
+    const formattedAuthors = authors.map((authors) => ({
       id: author._id.toString(),
       _id: author._id.toString(),
       name: author.name,
@@ -41,8 +41,6 @@ export async function GET() {
       bio: author.bio,
       created_at: author.created_at,
       updated_at: author.updated_at,
-
-      
     }))
 
     return NextResponse.json({
@@ -70,7 +68,7 @@ export async function POST(request: NextRequest) {
     const db = client.db(DB_NAME)
 
     // Insert new author
-    const result = await db.collection("author").insertOne({
+    const result = await db.collection("authors").insertOne({
       name: body.name,
       nationality: body.nationality,
       era: body.era,
