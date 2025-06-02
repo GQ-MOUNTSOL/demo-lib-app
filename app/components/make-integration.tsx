@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Send, Loader2, Download, CheckCircle, Bell, Webhook, AlertTriangle } from 'lucide-react'
+import { Send, Loader2, Download, CheckCircle, Bell, Webhook, AlertTriangle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProcessedBooksDisplay } from "./processed-books-display"
@@ -36,8 +36,9 @@ export function MakeIntegration() {
   const [isListening, setIsListening] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
+  // Replace the problematic comment with:
   // const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/mxx7c2hgingefxsjskc2xyestvoho7rq" // working scenario webhook
- const MAKE_WEBHOOK_URL ="https://hook.eu2.make.com/vj9cf3va2p8bmil6ay30j7buwlapufhs" // testing scenario webhook
+  const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/vj9cf3va2p8bmil6ay30j7buwlapufhs" // testing scenario webhook
   const RESULT_WEBHOOK_URL = "https://hook.eu2.make.com/pohurkyqse8t863va7susouvmlv1otmv"
   const LOCAL_WEBHOOK_ENDPOINT = "/api/webhook/results"
 
@@ -574,7 +575,9 @@ export function MakeIntegration() {
                 <div className="text-xs text-gray-600 space-y-1">
                   <div>• Webhook URL: {MAKE_WEBHOOK_URL}</div>
                   <div>• Action: fetch_all</div>
-                  <div>• Expected response: Array of book objects or {"{"}"data": [books]{"}"}</div>
+                  <div>
+                    • Expected response: Array of book objects or {"{"}"data": [books]{"}"}
+                  </div>
                   <div>• Check browser console for detailed logs</div>
                 </div>
               </div>

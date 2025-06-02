@@ -142,6 +142,26 @@ export function MongoDBSchemaExplorer() {
     )
   }
 
+  function getType(value: any): string {
+    if (value === null) return "Null"
+    if (value === undefined) return "Undefined"
+
+    if (Array.isArray(value)) return "Array"
+
+    if (value instanceof Date) return "Date"
+
+    // Check for ObjectId (MongoDB specific)
+    if (value && typeof value === "object" && value.constructor && value.constructor.name === "ObjectId") {
+      return "ObjectId"
+    }
+
+    if (typeof value === "object") return "Object"
+
+    // Fix the type checking for primitive types
+    const primitiveType = typeof value
+    return primitiveType.charAt(0).toUpperCase() + primitiveType.slice(1)
+  }
+
   return (
     <div className="space-y-6">
       <Card>

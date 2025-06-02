@@ -34,16 +34,15 @@ export async function GET() {
         nationality: "American",
         era: "Modern",
         bio: "A test author from the PostgreSQL test database",
-        source: "testdb"
+        source: "testdb",
       },
       {
         id: 2,
         name: "Test Author 2",
-    
         nationality: "British",
-           era: "Contemporary",
+        era: "Contemporary",
         bio: "Another test author for demonstration purposes",
-        source: "testdb"
+        source: "testdb",
       },
       {
         id: 3,
@@ -51,26 +50,25 @@ export async function GET() {
         nationality: "Canadian",
         era: "21st Century",
         bio: "Third test author with sample biographical information",
-        source: "testdb"
-      }
+        source: "testdb",
+      },
     ]
 
     return NextResponse.json({
       success: true,
       count: mockAuthors.length,
       authors: mockAuthors,
-      note: "This is mock data. Replace with your actual test database connection."
+      note: "This is mock data. Replace with your actual test database connection.",
     })
-
   } catch (error) {
     console.error("Error fetching from test database:", error)
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch authors from test database",
-        details: error.message
+        details: error.message,
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
