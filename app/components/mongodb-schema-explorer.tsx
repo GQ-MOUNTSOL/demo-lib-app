@@ -69,9 +69,10 @@ export function MongoDBSchemaExplorer() {
       }
     } catch (error) {
       console.error("Error fetching MongoDB schema:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
       toast({
         title: "Schema Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

@@ -130,7 +130,7 @@ export async function GET() {
   }
 }
 
-// Helper function to determine the type of a value
+// Fix the getType function that's causing the compilation error
 function getType(value: any): string {
   if (value === null) return "Null"
   if (value === undefined) return "Undefined"
@@ -146,6 +146,7 @@ function getType(value: any): string {
 
   if (typeof value === "object") return "Object"
 
-  // Capitalize first letter of primitive types
-  return typeof value.charAt(0).toUpperCase() + typeof value.slice(1)
+  // Fix the type checking for primitive types
+  const primitiveType = typeof value
+  return primitiveType.charAt(0).toUpperCase() + primitiveType.slice(1)
 }

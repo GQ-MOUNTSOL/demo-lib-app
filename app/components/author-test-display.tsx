@@ -147,12 +147,14 @@ export function AuthorTestDisplay() {
         throw new Error(data.error || "Unknown error")
       }
     } catch (error) {
+      // Fix the error.message type issue
+      const errorMessage = error instanceof Error ? error.message : String(error)
       console.error("Error fetching MongoDB authors:", error)
       setDbStatus((prev) => ({
         ...prev,
         mongodb: {
           status: "error",
-          message: error.message,
+          message: errorMessage,
           author_count: 0,
         },
       }))
@@ -201,12 +203,14 @@ export function AuthorTestDisplay() {
         throw new Error(data.error || "Unknown error")
       }
     } catch (error) {
+      // Fix the error.message type issue
+      const errorMessage = error instanceof Error ? error.message : String(error)
       console.error("Error fetching Test DB authors:", error)
       setDbStatus((prev) => ({
         ...prev,
         testdb: {
           status: "error",
-          message: error.message,
+          message: errorMessage,
           author_count: 0,
         },
       }))
@@ -246,17 +250,19 @@ export function AuthorTestDisplay() {
         throw new Error(data.details || data.error || "Connection test failed")
       }
     } catch (error) {
+      // Fix the error.message type issue
+      const errorMessage = error instanceof Error ? error.message : String(error)
       setDbStatus((prev) => ({
         ...prev,
         mongodb: {
           ...prev.mongodb,
           status: "error",
-          message: error.message,
+          message: errorMessage,
         },
       }))
       toast({
         title: "MongoDB Connection Test Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -306,9 +312,11 @@ export function AuthorTestDisplay() {
         throw new Error(data.error || "Unknown error")
       }
     } catch (error) {
+      // Fix the error.message type issue
+      const errorMessage = error instanceof Error ? error.message : String(error)
       toast({
         title: "Error Creating Author",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

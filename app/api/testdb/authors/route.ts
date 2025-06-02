@@ -62,11 +62,12 @@ export async function GET() {
     })
   } catch (error) {
     console.error("Error fetching from test database:", error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch authors from test database",
-        details: error.message,
+        details: errorMessage,
       },
       { status: 500 },
     )

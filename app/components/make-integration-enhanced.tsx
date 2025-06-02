@@ -137,8 +137,9 @@ export function MakeIntegrationEnhanced() {
       setBookTitle("")
     } catch (error) {
       console.error("Error sending to Make.com:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
       setRequests((prev) =>
-        prev.map((req) => (req.id === requestId ? { ...req, status: "error", response: error.message } : req)),
+        prev.map((req) => (req.id === requestId ? { ...req, status: "error", response: errorMessage } : req)),
       )
 
       toast({

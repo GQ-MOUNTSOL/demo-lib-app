@@ -161,6 +161,11 @@ export function MakeIntegration() {
       }
     } catch (error) {
       console.error("Error sending to Make.com:", error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setSentRequests((prev) =>
+        prev.map((req) => (req.id === requestId ? { ...req, status: "error", response: errorMessage } : req)),
+      )
+
       toast({
         title: "Error",
         description: "Failed to send request to Make.com",
