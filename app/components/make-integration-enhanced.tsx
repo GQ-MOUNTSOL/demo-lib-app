@@ -29,7 +29,9 @@ export function MakeIntegrationEnhanced() {
   const [fetchMethod, setFetchMethod] = useState<"datastore" | "database" | "immediate">("datastore")
   const { toast } = useToast()
 
-  const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/mxx7c2hgingefxsjskc2xyestvoho7rq"
+//   const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/mxx7c2hgingefxsjskc2xyestvoho7rq" for working scenario
+  const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/vj9cf3va2p8bmil6ay30j7buwlapufhs" // for Testing new scenario
+
 
   const sendToMake = async () => {
     if (!bookTitle.trim()) {

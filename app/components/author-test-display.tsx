@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,17 +10,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { RefreshCw, User, Database, Cloud, Plus } from "lucide-react"
+import {
+  RefreshCw,
+  User,
+  Database,
+  Cloud,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Author {
-  id: string | number
+  id?: string | number
+  _id?: string
   name: string
   nationality?: string
   era?: string
   bio?: string
   source?: "mongodb" | "testdb"
-  _id?: string
+  books?: any[]
+  created_at?: string
+  updated_at?: string
+  [key: string]: any // For any additional fields from MongoDB
 }
 
 interface DatabaseStatus {
@@ -62,6 +89,13 @@ export function AuthorTestDisplay() {
     bio: "",
   })
   const [isCreating, setIsCreating] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [sortField, setSortField] = useState("name")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(9)
+  const [totalAuthors, setTotalAuthors] = useState(0)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -70,10 +104,17 @@ export function AuthorTestDisplay() {
     testMongoConnection()
   }, [])
 
+  useEffect(() => {
+    // Reset to first page when search term changes
+    setCurrentPage(1)
+  }, [searchTerm])
+
   const fetchMongoAuthors = async () => {
     setIsLoadingMongo(true)
     try {
-      const response = await fetch("/api/mongodb/authors")
+      const response = await fetch(
+        `/api/mongodb/authors?page=${currentPage}&limit=${itemsPerPage}&search=${searchTerm}&sort=${sortField}&direction=${sortDirection}`,
+      )
       const data = await response.json()
 
       if (!response.ok) {
@@ -82,26 +123,25 @@ export function AuthorTestDisplay() {
 
       if (data.success) {
         // Format authors with source identifier
-        const formattedAuthors = (data.authors || []).map((author) => ({
+        const formattedAuthors = data.authors.map((author: any) => ({
           ...author,
           source: "mongodb",
-          id: author.id || author._id,
-          data:author.authorD
         }))
 
         setMongoAuthors(formattedAuthors)
+        setTotalAuthors(data.total || formattedAuthors.length)
         setDbStatus((prev) => ({
           ...prev,
           mongodb: {
             status: "connected",
             message: "Successfully connected to MongoDB Atlas",
-            author_count: data.count || 0,
+            author_count: data.total || 0,
           },
         }))
 
         toast({
           title: "MongoDB Authors Loaded",
-          description: `Successfully loaded ${data.count || 0} authors from MongoDB`,
+          description: `Successfully loaded ${formattedAuthors.length} authors from MongoDB`,
         })
       } else {
         throw new Error(data.error || "Unknown error")
@@ -138,7 +178,7 @@ export function AuthorTestDisplay() {
 
       if (data.success) {
         // Format authors with source identifier
-        const formattedAuthors = (data.authors || []).map((author) => ({
+        const formattedAuthors = (data.authors || []).map((author: any) => ({
           ...author,
           source: "testdb",
         }))
@@ -276,6 +316,42 @@ export function AuthorTestDisplay() {
     }
   }
 
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      // New field, default to ascending
+      setSortField(field)
+      setSortDirection("asc")
+    }
+
+    // Refetch with new sort parameters
+    fetchMongoAuthors()
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    fetchMongoAuthors()
+  }
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage)
+    fetchMongoAuthors()
+  }
+
+  const getFilteredAuthors = (authors: Author[]) => {
+    if (!searchTerm) return authors
+
+    return authors.filter(
+      (author) =>
+        author.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        author.nationality?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        author.era?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        author.bio?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+  }
+
   const renderAuthorGrid = (authors: Author[], isLoading: boolean, source: string) => {
     if (isLoading) {
       return (
@@ -286,20 +362,26 @@ export function AuthorTestDisplay() {
       )
     }
 
-    if (authors.length === 0) {
+    const filteredAuthors = getFilteredAuthors(authors)
+
+    if (filteredAuthors.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500">
           <User className="h-8 w-8 mx-auto mb-2 text-gray-300" />
           <p>No authors found in {source}</p>
-          <p className="text-xs mt-1">Try refreshing or check your connection</p>
+          {searchTerm && <p className="text-xs mt-1">Try adjusting your search criteria</p>}
         </div>
       )
     }
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {authors.map((author, index) => (
-          <Card key={`${author.source}-${author.id || author._id || index}`} className="border border-gray-200">
+        {filteredAuthors.map((author, index) => (
+          <Card
+            key={`${author.source}-${author._id || author.id || index}`}
+            className="border border-gray-200 hover:border-blue-300 transition-colors cursor-pointer"
+            onClick={() => setSelectedAuthor(author)}
+          >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <div
@@ -338,21 +420,9 @@ export function AuthorTestDisplay() {
                     </p>
                   )}
 
-                  {author.data && (
-                    <p
-                      className="text-xs text-gray-700 mb-2 overflow-hidden"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical",
-                      }}
-                    >
-                      {author.data}
-                    </p>
-                  )}
                   <div className="flex gap-1 flex-wrap">
                     <Badge variant="outline" className="text-xs">
-                      ID: {author.id || author._id || "N/A"}
+                      ID: {author._id || author.id || "N/A"}
                     </Badge>
                     <Badge
                       className={`text-xs ${
@@ -361,12 +431,170 @@ export function AuthorTestDisplay() {
                     >
                       {author.source === "mongodb" ? "MongoDB" : "Test DB"}
                     </Badge>
+                    {author.books && (
+                      <Badge className="bg-purple-100 text-purple-800 text-xs">{author.books.length} books</Badge>
+                    )}
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
+      </div>
+    )
+  }
+
+  const renderPagination = () => {
+    const totalPages = Math.ceil(totalAuthors / itemsPerPage)
+
+    return (
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-gray-600">
+          Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalAuthors)} of{" "}
+          {totalAuthors}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-sm font-medium">
+            Page {currentPage} of {totalPages || 1}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={(value) => {
+              setItemsPerPage(Number.parseInt(value))
+              setCurrentPage(1)
+              fetchMongoAuthors()
+            }}
+          >
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="6">6</SelectItem>
+              <SelectItem value="9">9</SelectItem>
+              <SelectItem value="12">12</SelectItem>
+              <SelectItem value="24">24</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    )
+  }
+
+  const renderAuthorDetail = (author: Author) => {
+    if (!author) return null
+
+    // Get all fields from the author object
+    const authorFields = Object.entries(author).filter(([key]) => !["_id", "id", "source"].includes(key))
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-12 h-12 rounded-full flex items-center justify-center ${
+              author.source === "mongodb" ? "bg-green-100" : "bg-blue-100"
+            }`}
+          >
+            {author.source === "mongodb" ? (
+              <Cloud className="h-6 w-6 text-green-600" />
+            ) : (
+              <Database className="h-6 w-6 text-blue-600" />
+            )}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">{author.name}</h2>
+            <div className="flex gap-2 mt-1">
+              <Badge
+                className={`${
+                  author.source === "mongodb" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                }`}
+              >
+                {author.source === "mongodb" ? "MongoDB" : "Test DB"}
+              </Badge>
+              <Badge variant="outline">ID: {author._id || author.id || "N/A"}</Badge>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {authorFields.map(([key, value]) => {
+            // Skip rendering certain fields or empty values
+            if (value === undefined || value === null || value === "") return null
+            if (key === "books" && Array.isArray(value)) {
+              return (
+                <div key={key} className="col-span-2 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold mb-2 capitalize">
+                    {key} ({value.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {value.map((book: any, i: number) => (
+                      <div key={i} className="p-2 bg-white rounded border">
+                        <p className="font-medium text-sm">{book.title || book}</p>
+                        {book.genre && <p className="text-xs text-gray-600">{book.genre}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+
+            // Handle dates
+            if (key.includes("date") || key.includes("_at")) {
+              const dateValue = new Date(value as string).toLocaleString()
+              return (
+                <div key={key} className="p-3 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold text-sm mb-1 capitalize">{key.replace("_", " ")}</h3>
+                  <p className="text-sm">{dateValue}</p>
+                </div>
+              )
+            }
+
+            // Handle objects
+            if (typeof value === "object" && value !== null) {
+              return (
+                <div key={key} className="col-span-2 p-3 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold text-sm mb-1 capitalize">{key.replace("_", " ")}</h3>
+                  <pre className="text-xs overflow-auto p-2 bg-white rounded border">
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
+                </div>
+              )
+            }
+
+            // Handle long text
+            if (typeof value === "string" && value.length > 100) {
+              return (
+                <div key={key} className="col-span-2 p-3 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold text-sm mb-1 capitalize">{key.replace("_", " ")}</h3>
+                  <p className="text-sm whitespace-pre-wrap">{value}</p>
+                </div>
+              )
+            }
+
+            // Default rendering for simple fields
+            return (
+              <div key={key} className="p-3 bg-gray-50 rounded-lg">
+                <h3 className="font-semibold text-sm mb-1 capitalize">{key.replace("_", " ")}</h3>
+                <p className="text-sm">{String(value)}</p>
+              </div>
+            )
+          })}
+        </div>
       </div>
     )
   }
@@ -547,6 +775,62 @@ export function AuthorTestDisplay() {
             </Card>
           )}
 
+          {/* Search and Filter Controls */}
+          <div className="mb-6">
+            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search authors by name, nationality, era..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" variant="secondary">
+                  Search
+                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <SlidersHorizontal className="h-4 w-4 mr-2" />
+                      Sort & Filter
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Sort & Filter Options</DialogTitle>
+                      <DialogDescription>Customize how authors are sorted and displayed</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Sort By</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["name", "nationality", "era", "created_at"].map((field) => (
+                            <Button
+                              key={field}
+                              variant={sortField === field ? "default" : "outline"}
+                              onClick={() => handleSort(field)}
+                              className="justify-between"
+                            >
+                              <span className="capitalize">{field.replace("_", " ")}</span>
+                              {sortField === field && (
+                                <ArrowUpDown
+                                  className={`h-4 w-4 ml-2 ${sortDirection === "desc" ? "rotate-180" : ""}`}
+                                />
+                              )}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </form>
+          </div>
+
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="mongodb" className="flex items-center gap-2">
@@ -572,6 +856,7 @@ export function AuthorTestDisplay() {
                 </Button>
               </div>
               {renderAuthorGrid(mongoAuthors, isLoadingMongo, "MongoDB")}
+              {activeTab === "mongodb" && mongoAuthors.length > 0 && renderPagination()}
             </TabsContent>
 
             <TabsContent value="testdb" className="space-y-4">
@@ -605,6 +890,17 @@ export function AuthorTestDisplay() {
         </CardContent>
       </Card>
 
+      {/* Author Detail Dialog */}
+      <Dialog open={!!selectedAuthor} onOpenChange={(open) => !open && setSelectedAuthor(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Author Details</DialogTitle>
+            <DialogDescription>Complete information about the selected author</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">{selectedAuthor && renderAuthorDetail(selectedAuthor)}</ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* Configuration Info */}
       <Card>
         <CardHeader>
@@ -619,13 +915,13 @@ export function AuthorTestDisplay() {
                   • <strong>Connection:</strong> Direct MongoDB Atlas connection (secure)
                 </div>
                 <div>
-                  • <strong>Database:</strong> bookstore
+                  • <strong>Database:</strong> test
                 </div>
                 <div>
-                  • <strong>Collection:</strong> authors
+                  • <strong>Collection:</strong> author
                 </div>
                 <div>
-                  • <strong>Features:</strong> Read, Write, Test Connection
+                  • <strong>Features:</strong> Read, Write, Test Connection, Pagination, Search, Sort
                 </div>
                 <div>
                   • <strong>Security:</strong> Server-side only, credentials protected
@@ -644,21 +940,6 @@ export function AuthorTestDisplay() {
                 </div>
                 <div>
                   • <strong>Note:</strong> Update the API route with your actual database connection
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 bg-yellow-50 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2 text-yellow-800">Security Improvements:</h4>
-              <div className="text-xs text-yellow-700 space-y-1">
-                <div>
-                  • <strong>Removed Make.com dependency:</strong> No more insecure HTTP connections
-                </div>
-                <div>
-                  • <strong>Direct MongoDB connection:</strong> Secure server-side API routes
-                </div>
-                <div>
-                  • <strong>Protected credentials:</strong> MongoDB credentials stored server-side only
                 </div>
               </div>
             </div>

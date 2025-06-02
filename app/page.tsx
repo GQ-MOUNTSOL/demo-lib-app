@@ -5,11 +5,12 @@ import { BookManagement } from "./components/book-management"
 import { AuthorManagement } from "./components/author-management"
 import { GenreManagement } from "./components/genre-management"
 import { WebhookStatus } from "./components/webhook-status"
-import { Book, Users, Tag, Webhook, AlertTriangle, Database } from 'lucide-react'
+import { Book, Users, Tag, Webhook, AlertTriangle, Database, FileSearch } from "lucide-react"
 import { MakeIntegration } from "./components/make-integration"
 import { DebugPanel } from "./components/debug-panel"
 import { MongoDBStatus } from "./components/mongodb-status"
 import { AuthorTestDisplay } from "./components/author-test-display"
+import { MongoDBSchemaExplorer } from "./components/mongodb-schema-explorer"
 
 export default function AdminDashboard() {
   return (
@@ -24,7 +25,7 @@ export default function AdminDashboard() {
         <MongoDBStatus />
 
         <Tabs defaultValue="books" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="books" className="flex items-center gap-2">
               <Book className="h-4 w-4" />
               Books
@@ -52,6 +53,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="test-db" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               Test DB
+            </TabsTrigger>
+            <TabsTrigger value="schema" className="flex items-center gap-2">
+              <FileSearch className="h-4 w-4" />
+              Schema
             </TabsTrigger>
           </TabsList>
 
@@ -100,6 +105,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="test-db">
             <AuthorTestDisplay />
+          </TabsContent>
+
+          <TabsContent value="schema">
+            <MongoDBSchemaExplorer />
           </TabsContent>
         </Tabs>
       </div>
