@@ -87,7 +87,7 @@ export function MakeIntegration() {
 
       return () => clearInterval(interval)
     }
-  }, [isListening])
+  }, [isListening, toast])
 
   const isValidBookData = (data: any) => {
     return (
@@ -120,7 +120,8 @@ export function MakeIntegration() {
       requestId: requestId,
       timestamp: new Date().toISOString(),
       // Add callback webhook for results
-      callback_webhook: window.location.origin + LOCAL_WEBHOOK_ENDPOINT,
+      callback_webhook:
+        typeof window !== "undefined" ? window.location.origin + LOCAL_WEBHOOK_ENDPOINT : LOCAL_WEBHOOK_ENDPOINT,
       result_webhook: RESULT_WEBHOOK_URL,
     }
 
@@ -162,9 +163,12 @@ export function MakeIntegration() {
     } catch (error) {
       console.error("Error sending to Make.com:", error)
       const errorMessage = error instanceof Error ? error.message : String(error)
-      setSentRequests((prev) =>
-        prev.map((req) => (req.id === requestId ? { ...req, status: "error", response: errorMessage } : req)),
-      )
+
+      // Fix: Don't try to update non-existent status property
+      setSentRequests((prev) => [
+        ...prev.filter((req) => req.id !== requestId),
+        { id: requestId, bookTitle: bookTitle.trim(), timestamp: new Date().toISOString() },
+      ])
 
       toast({
         title: "Error",
@@ -457,7 +461,7 @@ export function MakeIntegration() {
                   placeholder="e.g., The Wizard of Oz"
                   value={bookTitle}
                   onChange={(e) => setBookTitle(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && !isLoading && sendToMake()}
+                  onKeyDown={(e) => e.key === "Enter" && !isLoading && sendToMake()}
                 />
               </div>
 
