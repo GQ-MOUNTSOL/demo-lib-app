@@ -135,16 +135,7 @@ export function BookManagement() {
       book.author.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const uploadBookImage = async (bookId: number, file: File | undefined) => {
-    if (!file) {
-      toast({
-        title: "Error",
-        description: "No file selected",
-        variant: "destructive",
-      })
-      return
-    }
-
+  const uploadBookImage = async (bookId: number, file: File) => {
     try {
       const formData = new FormData()
       formData.append("image", file)

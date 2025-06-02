@@ -396,7 +396,7 @@ export function MakeIntegrationEnhanced() {
                   placeholder="e.g., The Wizard of Oz"
                   value={bookTitle}
                   onChange={(e) => setBookTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !isLoading && sendToMake()}
+                  onKeyPress={(e) => e.key === "Enter" && !isLoading && sendToMake()}
                 />
               </div>
 

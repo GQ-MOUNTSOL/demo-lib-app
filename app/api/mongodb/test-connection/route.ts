@@ -40,7 +40,7 @@ export async function GET() {
       {
         success: false,
         error: "MongoDB connection failed",
-        details: error instanceof Error ? error.message : String(error),
+        details: error.message,
       },
       { status: 500 },
     )

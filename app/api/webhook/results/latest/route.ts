@@ -13,13 +13,7 @@ export async function GET() {
     return NextResponse.json(results)
   } catch (error) {
     console.error("Error fetching latest results:", error)
-    return NextResponse.json(
-      {
-        error: "Failed to fetch latest results",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Failed to fetch latest results" }, { status: 500 })
   }
 }
 
@@ -37,12 +31,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ status: "success" })
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: "Failed to store result",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Failed to store result" }, { status: 500 })
   }
 }

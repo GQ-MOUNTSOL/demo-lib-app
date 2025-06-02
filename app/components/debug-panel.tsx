@@ -1,6 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Copy, Send, AlertTriangle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export function DebugPanel() {
@@ -20,18 +26,7 @@ export function DebugPanel() {
     try {
       setIsLoading(true)
 
-      let payload;
-      try {
-        payload = JSON.parse(customPayload)
-      } catch (parseError) {
-        toast({
-          title: "Invalid JSON",
-          description: "Please check your JSON syntax",
-          variant: "destructive",
-        })
-        setIsLoading(false)
-        return;
-      }
+      const payload = JSON.parse(customPayload)
 
       console.log("Sending custom payload:", payload)
 
@@ -69,9 +64,14 @@ export function DebugPanel() {
         })
       }
     } catch (error) {
+      let errorMessage = "An unknown error occurred"
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+
       const errorInfo = {
-        error: error instanceof Error ? error.message : String(error),
-        type: error instanceof Error ? error.constructor.name : "Unknown",
+        error: errorMessage,
+        type: error.constructor.name,
         timestamp: new Date().toISOString(),
       }
 
@@ -79,7 +79,7 @@ export function DebugPanel() {
 
       toast({
         title: "Debug Request Error",
-        description: error instanceof Error ? error.message : String(error),
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -88,4 +88,100 @@ export function DebugPanel() {
   }
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.\
+    navigator.clipboard.writeText(text)
+    toast({
+      title: "Copied",
+      description: "Content copied to clipboard",
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            Debug Panel
+          </CardTitle>
+          <CardDescription>Test your Make.com webhook with custom payloads and view detailed responses</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="custom-payload">Custom Payload (JSON)</Label>
+            <Textarea
+              id="custom-payload"
+              value={customPayload}
+              onChange={(e) => setCustomPayload(e.target.value)}
+              className="font-mono text-sm"
+              rows={8}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button onClick={sendCustomPayload} disabled={isLoading}>
+              <Send className="h-4 w-4 mr-2" />
+              {isLoading ? "Sending..." : "Send Test Request"}
+            </Button>
+            <Button variant="outline" onClick={() => copyToClipboard(customPayload)}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copy Payload
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {lastResponse && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Last Response</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => copyToClipboard(lastResponse)}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy Response
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <pre className="bg-gray-100 p-4 rounded text-xs overflow-auto max-h-96">{lastResponse}</pre>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Common Issues & Solutions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="p-3 bg-red-50 rounded-lg">
+              <Badge variant="destructive" className="mb-2">
+                HTTP 500 Error
+              </Badge>
+              <p className="text-sm text-red-700">
+                • Check if your Make.com scenario is active and published
+                <br />• Verify the webhook URL is correct
+                <br />• Ensure your scenario can handle the payload structure
+              </p>
+            </div>
+
+            <div className="p-3 bg-yellow-50 rounded-lg">
+              <Badge className="bg-yellow-100 text-yellow-800 mb-2">CORS Issues</Badge>
+              <p className="text-sm text-yellow-700">
+                • Make.com webhooks should handle CORS automatically
+                <br />• Try testing from a different browser or incognito mode
+              </p>
+            </div>
+
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <Badge className="bg-blue-100 text-blue-800 mb-2">Network Issues</Badge>
+              <p className="text-sm text-blue-700">
+                • Check your internet connection
+                <br />• Try the request from Postman or curl to isolate the issue
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

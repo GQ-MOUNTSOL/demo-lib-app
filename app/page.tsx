@@ -9,6 +9,7 @@ import { Book, Users, Tag, Webhook, AlertTriangle, Database, FileSearch } from "
 import { MakeIntegration } from "./components/make-integration"
 import { DebugPanel } from "./components/debug-panel"
 import { MongoDBStatus } from "./components/mongodb-status"
+import { AuthorTestDisplay } from "./components/author-test-display"
 import { MongoDBSchemaExplorer } from "./components/mongodb-schema-explorer"
 
 export default function AdminDashboard() {
@@ -103,19 +104,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="test-db">
-            <Card>
-              <CardHeader>
-                <CardTitle>Test Database</CardTitle>
-                <CardDescription>Connect to your test database</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Database className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-600 mb-2">Test Database Connection</h3>
-                  <p className="text-gray-500">Configure your test database connection in the API routes</p>
-                </div>
-              </CardContent>
-            </Card>
+            <AuthorTestDisplay />
           </TabsContent>
 
           <TabsContent value="schema">
