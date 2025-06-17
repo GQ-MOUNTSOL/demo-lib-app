@@ -23,6 +23,17 @@ async function connectToDatabase() {
   }
 }
 
+function withCORS(response: NextResponse) {
+  response.headers.set("Access-Control-Allow-Origin", "*")
+  response.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type")
+  return response
+}
+
+export async function OPTIONS() {
+  return withCORS(new NextResponse(null, { status: 204 }))
+}
+
 export async function GET() {
   try {
     const client = await connectToDatabase()
@@ -43,21 +54,21 @@ export async function GET() {
       updated_at: author.updated_at,
     }))
 
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       success: true,
       count: formattedAuthors.length,
       authors: formattedAuthors,
-    })
+    }))
   } catch (error) {
     console.error("Error fetching authors from MongoDB:", error)
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       {
         success: false,
         error: "Failed to fetch authors from MongoDB",
         details: error.message,
       },
       { status: 500 },
-    )
+    ))
   }
 }
 
@@ -77,20 +88,20 @@ export async function POST(request: NextRequest) {
       updated_at: new Date(),
     })
 
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       success: true,
       message: "Author created successfully",
       id: result.insertedId.toString(),
-    })
+    }))
   } catch (error) {
     console.error("Error creating author:", error)
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       {
         success: false,
         error: "Failed to create author",
         details: error.message,
       },
       { status: 500 },
-    )
+    ))
   }
 }
