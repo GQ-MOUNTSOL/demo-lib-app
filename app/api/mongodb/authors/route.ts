@@ -3,7 +3,7 @@ import { MongoClient } from "mongodb"
 
 const MONGODB_URI =
   "mongodb+srv://gqmountsol:JTcgGkZTHJb8qFLq@demo0.pmagwui.mongodb.net/?retryWrites=true&w=majority&appName=demo0"
-const DB_NAME = "bookstore" // Changed from "test" to "bookstore" to match your Flask app
+const DB_NAME = "test" // Changed from "test" to "bookstore" to match your Flask app
 
 let cachedClient: MongoClient | null = null
 
