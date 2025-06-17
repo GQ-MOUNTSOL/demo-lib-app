@@ -40,3 +40,13 @@ export async function GET() {
       {
         success: false,
         error: "MongoDB connection failed",
+        details: error.message,
+      },
+      { status: 500 },
+    )
+  } finally {
+    if (client) {
+      await client.close()
+    }
+  }
+}
