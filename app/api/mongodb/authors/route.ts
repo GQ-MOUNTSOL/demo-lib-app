@@ -3,7 +3,7 @@ import { MongoClient } from "mongodb"
 
 const MONGODB_URI =
   "mongodb+srv://gqmountsol:JTcgGkZTHJb8qFLq@demo0.pmagwui.mongodb.net/?retryWrites=true&w=majority&appName=demo0"
-const DB_NAME = "test" // Using the test database
+const DB_NAME = "bookstore" // Changed from "test" to "bookstore" to match your Flask app
 
 let cachedClient: MongoClient | null = null
 
@@ -23,86 +23,55 @@ async function connectToDatabase() {
   }
 }
 
-export async function GET(request: NextRequest) {
+function withCORS(response: NextResponse, request?: NextRequest) {
+  const origin = request?.headers.get("origin") || "*"
+
+  response.headers.set("Access-Control-Allow-Origin", origin)
+  response.headers.set("Vary", "Origin") // avoid caching issues
+  response.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type")
+  return response
+}
+
+export async function OPTIONS() {
+  return withCORS(new NextResponse(null, { status: 204 }))
+}
+
+export async function GET() {
   try {
-    // Parse query parameters
-    const searchParams = request.nextUrl.searchParams
-    const page = Number.parseInt(searchParams.get("page") || "1")
-    const limit = Number.parseInt(searchParams.get("limit") || "9")
-    const search = searchParams.get("search") || ""
-    const sortField = searchParams.get("sort") || "name"
-    const sortDirection = searchParams.get("direction") || "asc"
-
-    const skip = (page - 1) * limit
-
     const client = await connectToDatabase()
     const db = client.db(DB_NAME)
-    const collection = db.collection("author")
 
-    // Build query
-    let query = {}
-    if (search) {
-      query = {
-        $or: [
-          { name: { $regex: search, $options: "i" } },
-          { nationality: { $regex: search, $options: "i" } },
-          { era: { $regex: search, $options: "i" } },
-          { bio: { $regex: search, $options: "i" } },
-        ],
-      }
-    }
+    // Fetch authors from the authors collection
+    const authors = await db.collection("authors").find({}).toArray()
 
-    // Get total count for pagination
-    const total = await collection.countDocuments(query)
+    // Convert MongoDB _id to string and format the response
+    const formattedAuthors = authors.map((author) => ({
+      id: author._id.toString(),
+      _id: author._id.toString(),
+      name: author.name,
+      nationality: author.nationality,
+      era: author.era,
+      bio: author.bio,
+      created_at: author.created_at,
+      updated_at: author.updated_at,
+    }))
 
-    // Build sort object
-    const sort: Record<string, 1 | -1> = {}
-    sort[sortField] = sortDirection === "asc" ? 1 : -1
-
-    // Fetch authors with pagination and sorting
-    const authors = await collection.find(query).sort(sort).skip(skip).limit(limit).toArray()
-
-    // Process authors to ensure proper JSON serialization
-    const processedAuthors = authors.map((author) => {
-      const processed = { ...author }
-
-      // Convert ObjectId to string
-      if (processed._id) {
-        processed._id = processed._id.toString()
-      }
-
-      // Process any nested ObjectIds
-      if (processed.books && Array.isArray(processed.books)) {
-        processed.books = processed.books.map((book: any) => {
-          if (book._id) {
-            return { ...book, _id: book._id.toString() }
-          }
-          return book
-        })
-      }
-
-      return processed
-    })
-
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       success: true,
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-      count: processedAuthors.length,
-      authors: processedAuthors,
-    })
+      count: formattedAuthors.length,
+      authors: formattedAuthors,
+    }))
   } catch (error) {
     console.error("Error fetching authors from MongoDB:", error)
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       {
         success: false,
         error: "Failed to fetch authors from MongoDB",
         details: error.message,
       },
       { status: 500 },
-    )
+    ))
   }
 }
 
@@ -113,29 +82,29 @@ export async function POST(request: NextRequest) {
     const db = client.db(DB_NAME)
 
     // Insert new author
-    const result = await db.collection("author").insertOne({
+    const result = await db.collection("authors").insertOne({
       name: body.name,
-      nationality: body.nationality || "",
-      era: body.era || "",
-      bio: body.bio || "",
+      nationality: body.nationality,
+      era: body.era,
+      bio: body.bio,
       created_at: new Date(),
       updated_at: new Date(),
     })
 
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       success: true,
       message: "Author created successfully",
       id: result.insertedId.toString(),
-    })
+    }))
   } catch (error) {
     console.error("Error creating author:", error)
-    return NextResponse.json(
+    return withCors(NextResponse.json(
       {
         success: false,
         error: "Failed to create author",
         details: error.message,
       },
       { status: 500 },
-    )
+    ))
   }
 }
