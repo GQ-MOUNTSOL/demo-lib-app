@@ -23,8 +23,11 @@ async function connectToDatabase() {
   }
 }
 
-function withCORS(response: NextResponse) {
-  response.headers.set("Access-Control-Allow-Origin", "*")
+function withCORS(response: NextResponse, request?: NextRequest) {
+  const origin = request?.headers.get("origin") || "*"
+
+  response.headers.set("Access-Control-Allow-Origin", origin)
+  response.headers.set("Vary", "Origin") // avoid caching issues
   response.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
   response.headers.set("Access-Control-Allow-Headers", "Content-Type")
   return response
