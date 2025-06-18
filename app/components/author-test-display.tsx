@@ -301,8 +301,10 @@ export function AuthorTestDisplay() {
         {authors.map((author, index) => (
           <Card
             key={`${author.source}-${author.id || author._id || index}`}
-            className="border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setSelectedAuthor(author)}
+            className={`border border-gray-200 ${
+              author.source === "mongodb" ? "cursor-pointer hover:shadow-md transition-shadow" : ""
+            }`}
+            onClick={author.source === "mongodb" ? () => setSelectedAuthor(author) : undefined}
           >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
@@ -357,8 +359,10 @@ export function AuthorTestDisplay() {
                     </Badge>
                   </div>
 
-                  {/* Click to view details hint */}
-                  <p className="text-xs text-blue-600 mt-2 font-medium">Click to view all details →</p>
+                  {/* Click to view details hint - only for MongoDB */}
+                  {author.source === "mongodb" && (
+                    <p className="text-xs text-blue-600 mt-2 font-medium">Click to view all details →</p>
+                  )}
                 </div>
               </div>
             </CardContent>
