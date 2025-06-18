@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RefreshCw, User, Database, Cloud, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Author {
   id: string | number
@@ -19,6 +20,11 @@ interface Author {
   bio?: string
   source?: "mongodb" | "testdb"
   _id?: string
+  created_at?: string | Date
+  updated_at?: string | Date
+  timestamp?: string | Date
+  // Add any other fields that might come from MongoDB
+  [key: string]: any // Allow for additional dynamic fields
 }
 
 interface DatabaseStatus {
@@ -63,6 +69,7 @@ export function AuthorTestDisplay() {
   })
   const [isCreating, setIsCreating] = useState(false)
   const { toast } = useToast()
+  const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null)
 
   useEffect(() => {
     fetchMongoAuthors()
@@ -82,13 +89,7 @@ export function AuthorTestDisplay() {
 
       if (data.success) {
         // Format authors with source identifier
-        const formattedAuthors = (data.authors || []).map((author) => ({
-          ...author,
-          source: "mongodb",
-          id: author.id || author._id,
-        }))
-
-        setMongoAuthors(formattedAuthors)
+        setMongoAuthors(data.authors)
         setDbStatus((prev) => ({
           ...prev,
           mongodb: {
@@ -298,7 +299,11 @@ export function AuthorTestDisplay() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {authors.map((author, index) => (
-          <Card key={`${author.source}-${author.id || author._id || index}`} className="border border-gray-200">
+          <Card
+            key={`${author.source}-${author.id || author._id || index}`}
+            className="border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setSelectedAuthor(author)}
+          >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
                 <div
@@ -324,18 +329,21 @@ export function AuthorTestDisplay() {
                       {author.era}
                     </Badge>
                   )}
+
+                  {/* Show preview of bio */}
                   {author.bio && (
                     <p
                       className="text-xs text-gray-700 mb-2 overflow-hidden"
                       style={{
                         display: "-webkit-box",
-                        WebkitLineClamp: 3,
+                        WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
                       }}
                     >
                       {author.bio}
                     </p>
                   )}
+
                   <div className="flex gap-1 flex-wrap">
                     <Badge variant="outline" className="text-xs">
                       ID: {author.id || author._id || "N/A"}
@@ -348,6 +356,9 @@ export function AuthorTestDisplay() {
                       {author.source === "mongodb" ? "MongoDB" : "Test DB"}
                     </Badge>
                   </div>
+
+                  {/* Click to view details hint */}
+                  <p className="text-xs text-blue-600 mt-2 font-medium">Click to view all details →</p>
                 </div>
               </div>
             </CardContent>
@@ -651,6 +662,182 @@ export function AuthorTestDisplay() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Detailed Author View Modal */}
+      {selectedAuthor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    {selectedAuthor.source === "mongodb" ? (
+                      <Cloud className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Database className="h-5 w-5 text-blue-600" />
+                    )}
+                    {selectedAuthor.name || "Unknown Author"}
+                  </CardTitle>
+                  <CardDescription>
+                    Complete author data from {selectedAuthor.source === "mongodb" ? "MongoDB Atlas" : "Test Database"}
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={() => setSelectedAuthor(null)}>
+                  Close
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 overflow-y-auto max-h-[70vh]">
+              <Tabs defaultValue="formatted" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="formatted">Formatted View</TabsTrigger>
+                  <TabsTrigger value="raw">Raw JSON Data</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="formatted" className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Basic Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Basic Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <Label className="text-sm font-semibold text-gray-700">Name</Label>
+                          <p className="text-sm mt-1">{selectedAuthor.name || "Not specified"}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-semibold text-gray-700">Nationality</Label>
+                          <p className="text-sm mt-1">{selectedAuthor.nationality || "Not specified"}</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-semibold text-gray-700">Era/Time Period</Label>
+                          <p className="text-sm mt-1">{selectedAuthor.era || "Not specified"}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Database Information */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Database Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <Label className="text-sm font-semibold text-gray-700">Source</Label>
+                          <Badge
+                            className={`mt-1 ${
+                              selectedAuthor.source === "mongodb"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            {selectedAuthor.source === "mongodb" ? "MongoDB Atlas" : "Test Database"}
+                          </Badge>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-semibold text-gray-700">Document ID</Label>
+                          <p className="text-sm mt-1 font-mono bg-gray-100 p-2 rounded">
+                            {selectedAuthor._id || selectedAuthor.id || "Not available"}
+                          </p>
+                        </div>
+                        {selectedAuthor.created_at && (
+                          <div>
+                            <Label className="text-sm font-semibold text-gray-700">Created At</Label>
+                            <p className="text-sm mt-1">{new Date(selectedAuthor.created_at).toLocaleString()}</p>
+                          </div>
+                        )}
+                        {selectedAuthor.updated_at && (
+                          <div>
+                            <Label className="text-sm font-semibold text-gray-700">Updated At</Label>
+                            <p className="text-sm mt-1">{new Date(selectedAuthor.updated_at).toLocaleString()}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Biography */}
+                  {selectedAuthor.bio && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Biography</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ScrollArea className="h-[200px]">
+                          <p className="text-sm leading-relaxed">{selectedAuthor.bio}</p>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* All Available Fields */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">All Available Fields</CardTitle>
+                      <CardDescription>Complete list of all fields returned from the database</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(selectedAuthor).map(([key, value]) => (
+                          <div key={key} className="p-3 bg-gray-50 rounded-lg">
+                            <Label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                              {key.replace(/_/g, " ")}
+                            </Label>
+                            <div className="mt-1">
+                              {typeof value === "object" && value !== null ? (
+                                <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">
+                                  {JSON.stringify(value, null, 2)}
+                                </pre>
+                              ) : (
+                                <p className="text-sm break-words">
+                                  {value !== null && value !== undefined ? String(value) : "null"}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="raw" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Raw JSON Data</CardTitle>
+                      <CardDescription>Complete raw data as received from the database</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="relative">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="absolute top-2 right-2 z-10"
+                          onClick={() => {
+                            navigator.clipboard.writeText(JSON.stringify(selectedAuthor, null, 2))
+                            toast({
+                              title: "Copied",
+                              description: "Author data copied to clipboard",
+                            })
+                          }}
+                        >
+                          Copy JSON
+                        </Button>
+                        <ScrollArea className="h-[500px]">
+                          <pre className="text-xs bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto">
+                            {JSON.stringify(selectedAuthor, null, 2)}
+                          </pre>
+                        </ScrollArea>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
