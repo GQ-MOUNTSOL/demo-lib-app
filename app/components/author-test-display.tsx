@@ -301,10 +301,8 @@ export function AuthorTestDisplay() {
         {authors.map((author, index) => (
           <Card
             key={`${author.source}-${author.id || author._id || index}`}
-            className={`border border-gray-200 ${
-              author.source === "mongodb" ? "cursor-pointer hover:shadow-md transition-shadow" : ""
-            }`}
-            onClick={author.source === "mongodb" ? () => setSelectedAuthor(author) : undefined}
+            className="border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setSelectedAuthor(author)}
           >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
@@ -359,10 +357,8 @@ export function AuthorTestDisplay() {
                     </Badge>
                   </div>
 
-                  {/* Click to view details hint - only for MongoDB */}
-                  {author.source === "mongodb" && (
-                    <p className="text-xs text-blue-600 mt-2 font-medium">Click to view all details →</p>
-                  )}
+                  {/* Click to view details hint - for all authors */}
+                  <p className="text-xs text-blue-600 mt-2 font-medium">Click to view all details →</p>
                 </div>
               </div>
             </CardContent>
@@ -693,8 +689,9 @@ export function AuthorTestDisplay() {
             </CardHeader>
             <CardContent className="p-6 overflow-y-auto max-h-[70vh]">
               <Tabs defaultValue="formatted" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="formatted">Formatted View</TabsTrigger>
+                  <TabsTrigger value="clean">Clean Data View</TabsTrigger>
                   <TabsTrigger value="raw">Raw JSON Data</TabsTrigger>
                 </TabsList>
 
@@ -801,6 +798,51 @@ export function AuthorTestDisplay() {
                             </div>
                           </div>
                         ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="clean" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Complete Data Overview</CardTitle>
+                      <CardDescription>All fetched data in a clean, readable format</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {Object.entries(selectedAuthor)
+                          .filter(([key]) => key !== "source") // Hide internal source field
+                          .map(([key, value]) => (
+                            <div key={key} className="border-b border-gray-100 pb-3 last:border-b-0">
+                              <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                                <Label className="text-sm font-semibold text-gray-700 min-w-[120px] capitalize">
+                                  {key
+                                    .replace(/_/g, " ")
+                                    .replace(/([A-Z])/g, " $1")
+                                    .trim()}
+                                  :
+                                </Label>
+                                <div className="flex-1">
+                                  {typeof value === "object" && value !== null ? (
+                                    <div className="bg-gray-50 p-3 rounded-md">
+                                      <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                                        {JSON.stringify(value, null, 2)}
+                                      </pre>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-900 break-words">
+                                      {value !== null && value !== undefined ? (
+                                        String(value)
+                                      ) : (
+                                        <span className="text-gray-400 italic">Not provided</span>
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     </CardContent>
                   </Card>
