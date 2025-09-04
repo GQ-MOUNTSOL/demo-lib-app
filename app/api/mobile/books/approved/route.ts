@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// In-memory storage for demo purposes
+// Shared approved books storage
 const approvedBooks: any[] = []
 
 export async function GET() {
@@ -25,13 +25,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Book data is required" }, { status: 400 })
     }
 
-    approvedBooks.push({
+    const approvedBook = {
       ...book,
       approvedAt: new Date().toISOString(),
-    })
+    }
+
+    approvedBooks.unshift(approvedBook)
 
     return NextResponse.json({
       success: true,
+      book: approvedBook,
       message: "Book added to approved list",
     })
   } catch (error) {

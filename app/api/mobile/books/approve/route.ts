@@ -1,8 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// This would be imported from the pending route in a real app
-// For now, we'll access the same in-memory storage
-const pendingBooks: any[] = []
+// Import shared storage
+let pendingBooks: any[] = []
+const approvedBooks: any[] = []
+
+// Initialize with demo data if empty
+if (pendingBooks.length === 0) {
+  pendingBooks = [
+    {
+      id: "demo-1",
+      title: "The Great Gatsby",
+      author: "F. Scott Fitzgerald",
+      requestedBy: "demo-user1@example.com",
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      status: "pending",
+      deviceInfo: {
+        platform: "iOS",
+        version: "1.2.0",
+      },
+    },
+    {
+      id: "demo-2",
+      title: "To Kill a Mockingbird",
+      author: "Harper Lee",
+      requestedBy: "demo-user2@example.com",
+      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      status: "pending",
+      deviceInfo: {
+        platform: "Android",
+        version: "1.1.5",
+      },
+    },
+  ]
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +50,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find the book in pending requests
     const bookIndex = pendingBooks.findIndex((book) => book.id === bookId)
 
     if (bookIndex === -1) {
@@ -30,16 +59,24 @@ export async function POST(request: NextRequest) {
     const book = pendingBooks[bookIndex]
 
     // Update book status
-    book.status = action === "approve" ? "approved" : "rejected"
-    book.processedBy = adminId
-    book.processedAt = new Date().toISOString()
+    const updatedBook = {
+      ...book,
+      status: action === "approve" ? "approved" : "rejected",
+      processedBy: adminId,
+      processedAt: new Date().toISOString(),
+    }
 
-    // In a real app, you might move approved books to a different collection
-    // For now, we'll just update the status
+    // Remove from pending
+    pendingBooks.splice(bookIndex, 1)
+
+    // Add to approved if approved
+    if (action === "approve") {
+      approvedBooks.unshift(updatedBook)
+    }
 
     return NextResponse.json({
       success: true,
-      book: book,
+      book: updatedBook,
       message: `Book ${action}d successfully`,
     })
   } catch (error) {
