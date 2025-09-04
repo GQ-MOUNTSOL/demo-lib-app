@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CheckCircle, XCircle, Clock, Smartphone, User, Calendar, Plus, Send } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Smartphone, User, Calendar, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface PendingBook {
@@ -17,7 +17,10 @@ interface PendingBook {
   requestedBy: string
   timestamp: string
   status: "pending" | "approved" | "rejected"
-  deviceInfo?: any
+  deviceInfo?: {
+    platform: string
+    version: string
+  }
   processedBy?: string
   processedAt?: string
 }
@@ -29,14 +32,15 @@ interface MobileBookRequestsProps {
 export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) {
   const [pendingBooks, setPendingBooks] = useState<PendingBook[]>([])
   const [approvedBooks, setApprovedBooks] = useState<PendingBook[]>([])
+  const [rejectedBooks, setRejectedBooks] = useState<PendingBook[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState("pending")
 
-  // Form state for adding dummy data
+  // Form for simulating mobile requests
   const [newBookTitle, setNewBookTitle] = useState("")
   const [newBookAuthor, setNewBookAuthor] = useState("")
-  const [newBookRequester, setNewBookRequester] = useState("")
+  const [requestedBy, setRequestedBy] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { toast } = useToast()
@@ -49,7 +53,6 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
 
       if (data.success) {
         setPendingBooks(data.books || [])
-        console.log("Fetched pending books:", data.books)
       } else {
         throw new Error(data.error || "Failed to fetch pending books")
       }
@@ -72,9 +75,6 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
 
       if (data.success) {
         setApprovedBooks(data.books || [])
-        console.log("Fetched approved books:", data.books)
-      } else {
-        console.error("Failed to fetch approved books:", data.error)
       }
     } catch (error) {
       console.error("Error fetching approved books:", error)
@@ -100,15 +100,18 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
       const data = await response.json()
 
       if (data.success) {
+        const processedBook = data.book
+
         // Remove from pending list
-        const approvedBook = pendingBooks.find((book) => book.id === bookId)
         setPendingBooks((prev) => prev.filter((book) => book.id !== bookId))
 
-        // If approved, add to approved list and notify parent
-        if (action === "approve" && approvedBook) {
-          const updatedBook = { ...approvedBook, status: "approved" as const, processedAt: new Date().toISOString() }
-          setApprovedBooks((prev) => [updatedBook, ...prev])
-          onBookApproved(updatedBook)
+        // Add to appropriate list
+        if (action === "approve") {
+          setApprovedBooks((prev) => [...prev, processedBook])
+          // Notify parent component to send to Make.com
+          onBookApproved(processedBook)
+        } else {
+          setRejectedBooks((prev) => [...prev, processedBook])
         }
 
         toast({
@@ -134,11 +137,11 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
     }
   }
 
-  const submitDummyRequest = async () => {
-    if (!newBookTitle.trim() || !newBookRequester.trim()) {
+  const submitMobileRequest = async () => {
+    if (!newBookTitle.trim() || !requestedBy.trim()) {
       toast({
         title: "Error",
-        description: "Book title and requester are required",
+        description: "Book title and requester email are required",
         variant: "destructive",
       })
       return
@@ -155,11 +158,10 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
         body: JSON.stringify({
           title: newBookTitle.trim(),
           author: newBookAuthor.trim() || undefined,
-          requestedBy: newBookRequester.trim(),
+          requestedBy: requestedBy.trim(),
           deviceInfo: {
-            platform: "Test Device",
+            platform: "Web Simulator",
             version: "1.0.0",
-            userAgent: "Admin Test",
           },
         }),
       })
@@ -173,17 +175,20 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
         // Clear form
         setNewBookTitle("")
         setNewBookAuthor("")
-        setNewBookRequester("")
+        setRequestedBy("")
 
         toast({
           title: "Success",
-          description: "Dummy book request submitted successfully",
+          description: "Book request submitted successfully",
         })
+
+        // Switch to pending tab to see the new request
+        setActiveTab("pending")
       } else {
         throw new Error(data.error || "Failed to submit book request")
       }
     } catch (error) {
-      console.error("Error submitting dummy request:", error)
+      console.error("Error submitting book request:", error)
       toast({
         title: "Error",
         description: "Failed to submit book request",
@@ -211,43 +216,116 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
     return new Date(timestamp).toLocaleString()
   }
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 bg-yellow-50 text-yellow-700 border-yellow-200">
+            <Clock className="h-3 w-3" />
+            Pending
+          </Badge>
+        )
+      case "approved":
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200">
+            <CheckCircle className="h-3 w-3" />
+            Approved
+          </Badge>
+        )
+      case "rejected":
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 bg-red-50 text-red-700 border-red-200">
+            <XCircle className="h-3 w-3" />
+            Rejected
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const renderBookList = (books: PendingBook[], showActions = false) => {
+    if (books.length === 0) {
+      return <div className="text-center py-8 text-gray-500">No {activeTab} book requests</div>
+    }
+
+    return (
+      <div className="space-y-4">
+        {books.map((book) => (
+          <div key={book.id} className="border rounded-lg p-4 space-y-3">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-lg">{book.title}</h3>
+                {book.author && <p className="text-sm text-gray-600">by {book.author}</p>}
+              </div>
+              {getStatusBadge(book.status)}
+            </div>
+
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3" />
+                {book.requestedBy}
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {formatDate(book.timestamp)}
+              </div>
+            </div>
+
+            {book.deviceInfo && (
+              <div className="text-xs text-gray-400 bg-gray-50 p-2 rounded">
+                Device: {book.deviceInfo.platform} | Version: {book.deviceInfo.version}
+              </div>
+            )}
+
+            {book.processedBy && book.processedAt && (
+              <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                Processed by {book.processedBy} on {formatDate(book.processedAt)}
+              </div>
+            )}
+
+            {showActions && book.status === "pending" && (
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => handleBookAction(book.id, "approve")}
+                  disabled={processingIds.has(book.id)}
+                  size="sm"
+                  className="flex-1"
+                >
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  {processingIds.has(book.id) ? "Processing..." : "Approve & Send to Make.com"}
+                </Button>
+                <Button
+                  onClick={() => handleBookAction(book.id, "reject")}
+                  disabled={processingIds.has(book.id)}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  {processingIds.has(book.id) ? "Processing..." : "Reject"}
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Smartphone className="h-5 w-5" />
-                Mobile App Book Requests
-              </CardTitle>
-              <CardDescription>Manage book requests from mobile app users</CardDescription>
-            </div>
-            <Button
-              onClick={() => {
-                fetchPendingBooks()
-                fetchApprovedBooks()
-              }}
-              disabled={isLoading}
-              size="sm"
-            >
-              Refresh All
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Add Dummy Request Form */}
+      {/* Mobile App Simulator */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add Test Request
+            <Smartphone className="h-5 w-5" />
+            Mobile App Simulator
           </CardTitle>
-          <CardDescription>Submit a dummy book request to test the approval workflow</CardDescription>
+          <CardDescription>Simulate a book request from your mobile app (for testing purposes)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="book-title">Book Title *</Label>
               <Input
@@ -266,176 +344,99 @@ export function MobileBookRequests({ onBookApproved }: MobileBookRequestsProps) 
                 onChange={(e) => setNewBookAuthor(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="requester">Requester Email *</Label>
-              <Input
-                id="requester"
-                placeholder="e.g., user@example.com"
-                value={newBookRequester}
-                onChange={(e) => setNewBookRequester(e.target.value)}
-              />
-            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="requested-by">Requested By (Email) *</Label>
+            <Input
+              id="requested-by"
+              type="email"
+              placeholder="e.g., user@example.com"
+              value={requestedBy}
+              onChange={(e) => setRequestedBy(e.target.value)}
+            />
           </div>
           <Button
-            onClick={submitDummyRequest}
-            disabled={isSubmitting || !newBookTitle.trim() || !newBookRequester.trim()}
+            onClick={submitMobileRequest}
+            disabled={isSubmitting || !newBookTitle.trim() || !requestedBy.trim()}
             className="w-full"
           >
             {isSubmitting ? (
               <>
-                <Send className="h-4 w-4 mr-2 animate-spin" />
-                Submitting...
+                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                Submitting Request...
               </>
             ) : (
               <>
                 <Plus className="h-4 w-4 mr-2" />
-                Submit Test Request
+                Submit Mobile Book Request
               </>
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Tabs for Pending and Approved */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="pending">Pending Requests ({pendingBooks.length})</TabsTrigger>
-          <TabsTrigger value="approved">Approved Requests ({approvedBooks.length})</TabsTrigger>
-        </TabsList>
+      {/* Mobile Requests Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5" />
+                Mobile Book Requests Management
+              </CardTitle>
+              <CardDescription>Manage book requests from your mobile app</CardDescription>
+            </div>
+            <Button onClick={fetchPendingBooks} disabled={isLoading} size="sm">
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="pending">Pending ({pendingBooks.length})</TabsTrigger>
+              <TabsTrigger value="approved">Approved ({approvedBooks.length})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({rejectedBooks.length})</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="pending">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Approval</CardTitle>
-              <CardDescription>Book requests awaiting admin approval</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-8 text-gray-500">Loading pending requests...</div>
-              ) : pendingBooks.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Smartphone className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No pending book requests</p>
-                  <p className="text-sm">Use the form above to add a test request</p>
+            <TabsContent value="pending">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Pending Approval</h3>
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+                    {pendingBooks.length} pending
+                  </Badge>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingBooks.map((book) => (
-                    <div key={book.id} className="border rounded-lg p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <h3 className="font-semibold text-lg">{book.title}</h3>
-                          {book.author && <p className="text-sm text-gray-600">by {book.author}</p>}
-                        </div>
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Pending
-                        </Badge>
-                      </div>
+                {renderBookList(pendingBooks, true)}
+              </div>
+            </TabsContent>
 
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {book.requestedBy}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(book.timestamp)}
-                        </div>
-                      </div>
-
-                      {book.deviceInfo && (
-                        <div className="text-xs text-gray-400 bg-gray-50 p-2 rounded">
-                          Device: {book.deviceInfo.platform || "Unknown"} | Version:{" "}
-                          {book.deviceInfo.version || "Unknown"}
-                        </div>
-                      )}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          onClick={() => handleBookAction(book.id, "approve")}
-                          disabled={processingIds.has(book.id)}
-                          size="sm"
-                          className="flex-1"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          {processingIds.has(book.id) ? "Processing..." : "Approve & Send to Make.com"}
-                        </Button>
-                        <Button
-                          onClick={() => handleBookAction(book.id, "reject")}
-                          disabled={processingIds.has(book.id)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          {processingIds.has(book.id) ? "Processing..." : "Reject"}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+            <TabsContent value="approved">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Approved & Sent to Make.com</h3>
+                  <Badge variant="outline" className="bg-green-50 text-green-700">
+                    {approvedBooks.length} approved
+                  </Badge>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                {renderBookList(approvedBooks)}
+              </div>
+            </TabsContent>
 
-        <TabsContent value="approved">
-          <Card>
-            <CardHeader>
-              <CardTitle>Approved Requests</CardTitle>
-              <CardDescription>Book requests that have been approved and sent to Make.com</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {approvedBooks.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No approved book requests yet</p>
-                  <p className="text-sm">Approved books will appear here</p>
+            <TabsContent value="rejected">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Rejected Requests</h3>
+                  <Badge variant="outline" className="bg-red-50 text-red-700">
+                    {rejectedBooks.length} rejected
+                  </Badge>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {approvedBooks.map((book) => (
-                    <div key={book.id} className="border rounded-lg p-4 space-y-3 bg-green-50">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <h3 className="font-semibold text-lg">{book.title}</h3>
-                          {book.author && <p className="text-sm text-gray-600">by {book.author}</p>}
-                        </div>
-                        <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Approved
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {book.requestedBy}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Requested: {formatDate(book.timestamp)}
-                        </div>
-                        {book.processedAt && (
-                          <div className="flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Approved: {formatDate(book.processedAt)}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="text-xs text-green-700 bg-green-100 p-2 rounded">
-                        ✓ This book has been approved and sent to Make.com for processing
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                {renderBookList(rejectedBooks)}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   )
 }

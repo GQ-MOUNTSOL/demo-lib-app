@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Shared approved books storage
+// In-memory storage for demo purposes
 const approvedBooks: any[] = []
 
 export async function GET() {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       approvedAt: new Date().toISOString(),
     }
 
-    approvedBooks.unshift(approvedBook)
+    approvedBooks.push(approvedBook)
 
     return NextResponse.json({
       success: true,

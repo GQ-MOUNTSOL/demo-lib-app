@@ -1,38 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Import shared storage
-let pendingBooks: any[] = []
+// Import the same storage as pending route
+// In a real app, this would be a shared database
+const pendingBooks: any[] = []
 const approvedBooks: any[] = []
-
-// Initialize with demo data if empty
-if (pendingBooks.length === 0) {
-  pendingBooks = [
-    {
-      id: "demo-1",
-      title: "The Great Gatsby",
-      author: "F. Scott Fitzgerald",
-      requestedBy: "demo-user1@example.com",
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      status: "pending",
-      deviceInfo: {
-        platform: "iOS",
-        version: "1.2.0",
-      },
-    },
-    {
-      id: "demo-2",
-      title: "To Kill a Mockingbird",
-      author: "Harper Lee",
-      requestedBy: "demo-user2@example.com",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      status: "pending",
-      deviceInfo: {
-        platform: "Android",
-        version: "1.1.5",
-      },
-    },
-  ]
-}
+const rejectedBooks: any[] = []
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,13 +22,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const bookIndex = pendingBooks.findIndex((book) => book.id === bookId)
+    // Get the current pending books from the other route
+    const pendingResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/mobile/books/pending`,
+    )
+    const pendingData = await pendingResponse.json()
 
-    if (bookIndex === -1) {
-      return NextResponse.json({ success: false, error: "Book request not found" }, { status: 404 })
+    if (!pendingData.success) {
+      return NextResponse.json({ success: false, error: "Failed to fetch pending books" }, { status: 500 })
     }
 
-    const book = pendingBooks[bookIndex]
+    const book = pendingData.books.find((b: any) => b.id === bookId)
+
+    if (!book) {
+      return NextResponse.json({ success: false, error: "Book request not found" }, { status: 404 })
+    }
 
     // Update book status
     const updatedBook = {
@@ -66,12 +46,11 @@ export async function POST(request: NextRequest) {
       processedAt: new Date().toISOString(),
     }
 
-    // Remove from pending
-    pendingBooks.splice(bookIndex, 1)
-
-    // Add to approved if approved
+    // Add to appropriate array
     if (action === "approve") {
-      approvedBooks.unshift(updatedBook)
+      approvedBooks.push(updatedBook)
+    } else {
+      rejectedBooks.push(updatedBook)
     }
 
     return NextResponse.json({
@@ -82,5 +61,18 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error processing book approval:", error)
     return NextResponse.json({ success: false, error: "Failed to process book approval" }, { status: 500 })
+  }
+}
+
+export async function GET() {
+  try {
+    return NextResponse.json({
+      success: true,
+      approved: approvedBooks,
+      rejected: rejectedBooks,
+    })
+  } catch (error) {
+    console.error("Error fetching processed books:", error)
+    return NextResponse.json({ success: false, error: "Failed to fetch processed books" }, { status: 500 })
   }
 }

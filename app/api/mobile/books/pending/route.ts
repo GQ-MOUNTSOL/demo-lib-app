@@ -1,13 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Shared in-memory storage - in production, use a real database
+// In-memory storage for demo purposes
+// In production, you'd use a real database
 const pendingBooks: any[] = [
   {
-    id: "demo-1",
+    id: "1",
     title: "The Great Gatsby",
     author: "F. Scott Fitzgerald",
-    requestedBy: "demo-user1@example.com",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    requestedBy: "user1@example.com",
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
     status: "pending",
     deviceInfo: {
       platform: "iOS",
@@ -15,21 +16,34 @@ const pendingBooks: any[] = [
     },
   },
   {
-    id: "demo-2",
+    id: "2",
     title: "To Kill a Mockingbird",
     author: "Harper Lee",
-    requestedBy: "demo-user2@example.com",
-    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    requestedBy: "user2@example.com",
+    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
     status: "pending",
     deviceInfo: {
       platform: "Android",
       version: "1.1.5",
     },
   },
+  {
+    id: "3",
+    title: "1984",
+    author: "George Orwell",
+    requestedBy: "user3@example.com",
+    timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 minutes ago
+    status: "pending",
+    deviceInfo: {
+      platform: "iOS",
+      version: "1.2.0",
+    },
+  },
 ]
 
 export async function GET() {
   try {
+    // Filter only pending books
     const pending = pendingBooks.filter((book) => book.status === "pending")
 
     return NextResponse.json({
@@ -53,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newBook = {
-      id: `book-${Date.now()}`,
+      id: Date.now().toString(),
       title,
       author: author || null,
       requestedBy,
@@ -74,6 +88,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Failed to create book request" }, { status: 500 })
   }
 }
-
-// Export the shared data for other routes
-export { pendingBooks }
