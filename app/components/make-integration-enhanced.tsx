@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Send, Loader2, Download, Database, Cloud } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Send, Loader2, Download, Database, Cloud, Clock, CheckCircle, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProcessedBooksDisplay } from "./processed-books-display"
+import { MobileBookRequests } from "./mobile-book-requests"
 
 interface MakeRequest {
   id: string
@@ -17,6 +19,17 @@ interface MakeRequest {
   timestamp: string
   response?: any
   processedData?: any
+  source?: "manual" | "mobile"
+}
+
+interface PendingBook {
+  id: string
+  title: string
+  author?: string
+  requestedBy: string
+  timestamp: string
+  status: "pending" | "approved" | "rejected"
+  deviceInfo?: any
 }
 
 export function MakeIntegrationEnhanced() {
@@ -29,12 +42,10 @@ export function MakeIntegrationEnhanced() {
   const [fetchMethod, setFetchMethod] = useState<"datastore" | "database" | "immediate">("datastore")
   const { toast } = useToast()
 
-//   const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/mxx7c2hgingefxsjskc2xyestvoho7rq" for working scenario
-  const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/vj9cf3va2p8bmil6ay30j7buwlapufhs" // for Testing new scenario
+  const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/vj9cf3va2p8bmil6ay30j7buwlapufhs"
 
-
-  const sendToMake = async () => {
-    if (!bookTitle.trim()) {
+  const sendToMake = async (title: string, source: "manual" | "mobile" = "manual") => {
+    if (!title.trim()) {
       toast({
         title: "Error",
         description: "Please enter a book title",
@@ -48,20 +59,22 @@ export function MakeIntegrationEnhanced() {
 
     const payload = {
       action: "process",
-      prompt1: `Act as a highly skilled literary analyst...`, // Your full prompt
-      prompt2: bookTitle.trim(),
-      prompt3: `Author of ${bookTitle.trim()}`,
-      prompt4: `Act as a book metadata expert...`, // Your full prompt
+      prompt1: `Act as a highly skilled literary analyst...`,
+      prompt2: title.trim(),
+      prompt3: `Author of ${title.trim()}`,
+      prompt4: `Act as a book metadata expert...`,
       requestId: requestId,
       timestamp: new Date().toISOString(),
-      fetchMethod: fetchMethod, // Tell Make.com how to handle the data
+      fetchMethod: fetchMethod,
+      source: source,
     }
 
     const newRequest: MakeRequest = {
       id: requestId,
-      bookTitle: bookTitle.trim(),
+      bookTitle: title.trim(),
       status: "pending",
       timestamp: new Date().toISOString(),
+      source: source,
     }
 
     setRequests((prev) => [newRequest, ...prev])
@@ -95,7 +108,6 @@ export function MakeIntegrationEnhanced() {
         throw new Error(`Make.com webhook error: ${response.status} - ${response.statusText}`)
       }
 
-      // Check if we got immediate data (fetchMethod: "immediate")
       if (responseData && isValidBookData(responseData)) {
         setRequests((prev) =>
           prev.map((req) =>
@@ -110,31 +122,32 @@ export function MakeIntegrationEnhanced() {
             ...responseData,
             timestamp: new Date().toISOString(),
             status: "completed",
+            source: source,
           },
         ])
 
         toast({
           title: "Success!",
-          description: `"${bookTitle}" has been processed and is ready to view`,
+          description: `"${title}" has been processed and is ready to view`,
         })
 
         setActiveTab("results")
       } else {
-        // Data is stored, need to fetch it
         setRequests((prev) => prev.map((req) => (req.id === requestId ? { ...req, status: "processing" } : req)))
 
         toast({
           title: "Processing Started",
-          description: `"${bookTitle}" is being analyzed. Use fetch to retrieve when ready.`,
+          description: `"${title}" is being analyzed. Use fetch to retrieve when ready.`,
         })
 
-        // Auto-fetch after a delay for stored data
         setTimeout(() => {
-          fetchSpecificBook(bookTitle.trim(), requestId)
+          fetchSpecificBook(title.trim(), requestId)
         }, 5000)
       }
 
-      setBookTitle("")
+      if (source === "manual") {
+        setBookTitle("")
+      }
     } catch (error) {
       console.error("Error sending to Make.com:", error)
       setRequests((prev) =>
@@ -149,6 +162,16 @@ export function MakeIntegrationEnhanced() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleMobileBookApproved = (book: PendingBook) => {
+    // Automatically send approved mobile book to Make.com
+    sendToMake(book.title, "mobile")
+
+    toast({
+      title: "Book Approved",
+      description: `"${book.title}" has been approved and sent to Make.com for processing`,
+    })
   }
 
   const fetchAllProcessedBooks = async () => {
@@ -192,14 +215,12 @@ export function MakeIntegrationEnhanced() {
 
       console.log("Fetched all books:", responseData)
 
-      // Handle different response formats
       let books = []
       if (Array.isArray(responseData)) {
         books = responseData
       } else if (responseData.books && Array.isArray(responseData.books)) {
         books = responseData.books
       } else if (responseData.records && Array.isArray(responseData.records)) {
-        // For Data Store responses
         books = responseData.records.map((record: any) => record.value || record)
       } else if (responseData) {
         books = [responseData]
@@ -266,13 +287,11 @@ export function MakeIntegrationEnhanced() {
         return null
       }
 
-      // Handle Data Store response format
       if (responseData.value) {
         responseData = responseData.value
       }
 
       if (isValidBookData(responseData)) {
-        // Update request status if we have a requestId
         if (requestId) {
           setRequests((prev) =>
             prev.map((req) =>
@@ -281,7 +300,6 @@ export function MakeIntegrationEnhanced() {
           )
         }
 
-        // Add to processed books
         setProcessedBooks((prev) => {
           const exists = prev.some((book) => book.book_title === bookTitle)
           if (!exists) {
@@ -322,11 +340,38 @@ export function MakeIntegrationEnhanced() {
     )
   }
 
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case "error":
+        return <XCircle className="h-4 w-4 text-red-500" />
+      case "processing":
+        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+      default:
+        return <Clock className="h-4 w-4 text-yellow-500" />
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-800"
+      case "error":
+        return "bg-red-100 text-red-800"
+      case "processing":
+        return "bg-blue-100 text-blue-800"
+      default:
+        return "bg-yellow-100 text-yellow-800"
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="send">Send</TabsTrigger>
+          <TabsTrigger value="mobile">Mobile Requests</TabsTrigger>
           <TabsTrigger value="fetch">Fetch</TabsTrigger>
           <TabsTrigger value="results">Results ({processedBooks.length})</TabsTrigger>
         </TabsList>
@@ -395,11 +440,15 @@ export function MakeIntegrationEnhanced() {
                   placeholder="e.g., The Wizard of Oz"
                   value={bookTitle}
                   onChange={(e) => setBookTitle(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && !isLoading && sendToMake()}
+                  onKeyPress={(e) => e.key === "Enter" && !isLoading && sendToMake(bookTitle)}
                 />
               </div>
 
-              <Button onClick={sendToMake} disabled={isLoading || !bookTitle.trim()} className="w-full">
+              <Button
+                onClick={() => sendToMake(bookTitle)}
+                disabled={isLoading || !bookTitle.trim()}
+                className="w-full"
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -423,6 +472,48 @@ export function MakeIntegrationEnhanced() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Recent Requests */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Requests</CardTitle>
+              <CardDescription>Recently sent book analysis requests</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {requests.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No recent requests</div>
+              ) : (
+                <div className="space-y-3">
+                  {requests.slice(0, 5).map((request) => (
+                    <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {getStatusIcon(request.status)}
+                        <div>
+                          <p className="font-medium">{request.bookTitle}</p>
+                          <p className="text-sm text-gray-500">
+                            {new Date(request.timestamp).toLocaleString()}
+                            {request.source === "mobile" && (
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                Mobile
+                              </Badge>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className={getStatusColor(request.status)}>{request.status}</Badge>
+                    </div>
+                  ))}
+                  {requests.length > 5 && (
+                    <p className="text-sm text-gray-500 text-center">... and {requests.length - 5} more requests</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mobile" className="space-y-6">
+          <MobileBookRequests onBookApproved={handleMobileBookApproved} />
         </TabsContent>
 
         <TabsContent value="fetch" className="space-y-6">
