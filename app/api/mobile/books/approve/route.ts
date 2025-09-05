@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Import the same storage as pending route
-// In a real app, this would be a shared database
-const pendingBooks: any[] = []
+// Shared storage arrays
 const approvedBooks: any[] = []
 const rejectedBooks: any[] = []
+
+// Import pending books from the pending route
+import { pendingBooks } from "../pending/route"
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,21 +23,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the current pending books from the other route
-    const pendingResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/mobile/books/pending`,
-    )
-    const pendingData = await pendingResponse.json()
+    // Find the book in pending requests
+    const bookIndex = pendingBooks.findIndex((book) => book.id === bookId && book.status === "pending")
 
-    if (!pendingData.success) {
-      return NextResponse.json({ success: false, error: "Failed to fetch pending books" }, { status: 500 })
+    if (bookIndex === -1) {
+      return NextResponse.json(
+        { success: false, error: "Book request not found or already processed" },
+        { status: 404 },
+      )
     }
 
-    const book = pendingData.books.find((b: any) => b.id === bookId)
-
-    if (!book) {
-      return NextResponse.json({ success: false, error: "Book request not found" }, { status: 404 })
-    }
+    const book = pendingBooks[bookIndex]
 
     // Update book status
     const updatedBook = {
@@ -45,6 +42,9 @@ export async function POST(request: NextRequest) {
       processedBy: adminId,
       processedAt: new Date().toISOString(),
     }
+
+    // Update the book in the pending array
+    pendingBooks[bookIndex] = updatedBook
 
     // Add to appropriate array
     if (action === "approve") {
@@ -70,9 +70,13 @@ export async function GET() {
       success: true,
       approved: approvedBooks,
       rejected: rejectedBooks,
+      total: approvedBooks.length + rejectedBooks.length,
     })
   } catch (error) {
     console.error("Error fetching processed books:", error)
     return NextResponse.json({ success: false, error: "Failed to fetch processed books" }, { status: 500 })
   }
 }
+
+// Export the shared data
+export { approvedBooks, rejectedBooks }

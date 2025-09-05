@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// In-memory storage for demo purposes
-const approvedBooks: any[] = []
+// Import approved books from the approve route
+import { approvedBooks } from "../approve/route"
 
 export async function GET() {
   try {
